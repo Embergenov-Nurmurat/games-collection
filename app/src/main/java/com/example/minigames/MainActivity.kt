@@ -1,6 +1,8 @@
 package com.example.minigames
 
 import android.app.Activity
+import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -15,6 +17,7 @@ import com.example.minigames.core.Host
 import com.example.minigames.core.I18n
 import com.example.minigames.core.Sfx
 import com.example.minigames.core.Store
+import com.example.minigames.core.Ui
 import com.example.minigames.flappy.FlappyView
 import com.example.minigames.hub.HubView
 import com.example.minigames.tictactoe.TttView
@@ -42,6 +45,7 @@ class MainActivity : Activity(), Host {
 
         store = Store(this)
         I18n.lang = if (store.lang in 0 until I18n.codes.size) store.lang else I18n.detect()
+        applyTheme()
         sfx = Sfx(this)
         sfx.enabled = store.soundOn
 
@@ -73,6 +77,29 @@ class MainActivity : Activity(), Host {
 
     override fun finishApp() {
         finish()
+    }
+
+    override fun applyTheme() {
+        Ui.dark = when (store.themeMode) {
+            0 -> (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) != Configuration.UI_MODE_NIGHT_NO
+            2 -> false
+            else -> true
+        }
+    }
+
+    override fun shareText(text: String) {
+        try {
+            val i = Intent(Intent.ACTION_SEND)
+            i.type = "text/plain"
+            i.putExtra(Intent.EXTRA_TEXT, text)
+            startActivity(Intent.createChooser(i, null))
+        } catch (e: Exception) {
+            // no app can handle it
+        }
+    }
+
+    override fun updateMusic() {
+        // filled in by the music player
     }
 
     // ------------------------------ lifecycle -------------------------------

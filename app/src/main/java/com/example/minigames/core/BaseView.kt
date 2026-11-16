@@ -94,12 +94,19 @@ abstract class BaseView(context: Context, protected val host: Host) : View(conte
     protected abstract fun update()
 
     /** Draw the screen in logical coordinates. */
-    protected abstract fun draw(c: Canvas)
+    protected abstract fun drawScreen(c: Canvas)
 
     /** Buttons that are active (and drawn by the screen itself) right now. */
     protected open fun buttons(): List<Button> = emptyList()
 
+    /** A finger went down outside of every button. */
     protected open fun onPointerDown(x: Float, y: Float) {}
+
+    /** The finger that started in [onPointerDown] moved (for swipes and drags). */
+    protected open fun onPointerMove(x: Float, y: Float) {}
+
+    /** The finger that started in [onPointerDown] was lifted (or the gesture was cancelled). */
+    protected open fun onPointerUp(x: Float, y: Float) {}
 
     protected open fun onViewportChanged() {}
 
@@ -175,6 +182,7 @@ abstract class BaseView(context: Context, protected val host: Host) : View(conte
 
     private fun baseUpdate() {
         tick++
+        Toasts.tick()
         if (fadeDir == 1) {
             fadeAlpha += 0.09f
             if (fadeAlpha >= 1f) {
@@ -236,9 +244,23 @@ abstract class BaseView(context: Context, protected val host: Host) : View(conte
             MotionEvent.ACTION_MOVE -> {
                 val b = heldBtn
                 if (b != null) b.held = b.contains(toLx(event.x), toLy(event.y))
+                else if (freePointer) onPointerMove(toLx(event.x), toLy(event.y))
             }
-            MotionEvent.ACTION_UP -> pointerUp(toLx(event.x), toLy(event.y))
-            MotionEvent.ACTION_CANCEL -> releaseHeld()
+            MotionEvent.ACTION_UP -> {
+                if (freePointer) {
+                    freePointer = false
+                    onPointerUp(toLx(event.x), toLy(event.y))
+                } else {
+                    pointerUp(toLx(event.x), toLy(event.y))
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                if (freePointer) {
+                    freePointer = false
+                    onPointerUp(-1000f, -1000f)
+                }
+                releaseHeld()
+            }
         }
         return true
     }
@@ -247,6 +269,8 @@ abstract class BaseView(context: Context, protected val host: Host) : View(conte
         if (!fading && onKey(keyCode)) return true
         return super.onKeyDown(keyCode, event)
     }
+
+    private var freePointer = false
 
     private fun pointerDown(x: Float, y: Float) {
         if (fading) return
@@ -259,6 +283,7 @@ abstract class BaseView(context: Context, protected val host: Host) : View(conte
                 }
             }
         }
+        freePointer = true
         onPointerDown(x, y)
     }
 
@@ -306,10 +331,40 @@ abstract class BaseView(context: Context, protected val host: Host) : View(conte
         canvas.translate(ox, oy)
         canvas.scale(scale, scale)
         if (shake > 0.5f) canvas.translate(rnd(-shake, shake), rnd(-shake, shake))
-        draw(canvas)
+        drawScreen(canvas)
         if (flash > 0.02f) fillRect(canvas, vl - 60f, vt - 60f, vr + 60f, vb + 60f, withA(Color.WHITE, flash * 0.75f))
+        drawToast(canvas)
         if (fadeAlpha > 0f) fillRect(canvas, vl - 60f, vt - 60f, vr + 60f, vb + 60f, withA(Color.BLACK, fadeAlpha))
         canvas.restore()
+    }
+
+    /** Banner with the newest achievement, sliding in from the top. */
+    private fun drawToast(c: Canvas) {
+        val it = Toasts.current() ?: return
+        val inT = clampF(it.age / Toasts.SLIDE.toFloat(), 0f, 1f)
+        val outT = clampF((Toasts.LIFE - it.age) / Toasts.SLIDE.toFloat(), 0f, 1f)
+        val k = min(easeOutCubic(inT), easeOutCubic(outT))
+        val top = vt + 12f - (1f - k) * 90f
+        val l = W / 2f - 200f
+        val r = W / 2f + 200f
+        fillRRect(c, l, top, r, top + 62f, 16f, Ui.SURFACE_HI)
+        strokeRRect(c, l, top, r, top + 62f, 16f, Ui.ACCENT, 1.5f)
+        fillOval(c, l + 14f, top + 13f, l + 50f, top + 49f, withA(Ui.ACCENT, 0.2f))
+        // star
+        path.reset()
+        for (i in 0 until 10) {
+            val ang = -Math.PI / 2 + i * Math.PI / 5
+            val rad = if (i % 2 == 0) 11f else 4.6f
+            val px = l + 32f + (cos(ang) * rad).toFloat()
+            val py = top + 31f + (sin(ang) * rad).toFloat()
+            if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+        }
+        path.close()
+        fill.shader = null
+        fill.color = Ui.ACCENT
+        c.drawPath(path, fill)
+        plainText(c, it.title, l + 64f, top + 25f, 12f, Ui.MUTED, -1, 320f)
+        plainText(c, it.sub, l + 64f, top + 47f, 18f, Ui.TEXT, -1, 320f)
     }
 
     protected fun fillRect(c: Canvas, l: Float, t: Float, r: Float, b: Float, color: Int) {
@@ -420,13 +475,16 @@ abstract class BaseView(context: Context, protected val host: Host) : View(conte
 
     private var glowShader: Shader? = null
     private var glowColor = 0
+    private var glowAlpha = 0f
 
     /** Dark background with a soft glow of the screen's accent colour at the top. */
     protected fun drawBackdrop(c: Canvas, glow: Int = accent) {
         drawGradient(c, Ui.BG_TOP, Ui.BG_BOTTOM)
-        if (glowShader == null || glowColor != glow) {
+        val ga = Ui.GLOW_ALPHA
+        if (glowShader == null || glowColor != glow || glowAlpha != ga) {
             glowColor = glow
-            glowShader = RadialGradient(W / 2f, 120f, 430f, withA(glow, 0.2f), withA(glow, 0f), Shader.TileMode.CLAMP)
+            glowAlpha = ga
+            glowShader = RadialGradient(W / 2f, 120f, 430f, withA(glow, ga), withA(glow, 0f), Shader.TileMode.CLAMP)
         }
         fill.shader = glowShader
         fill.color = Color.WHITE
@@ -539,8 +597,8 @@ abstract class BaseView(context: Context, protected val host: Host) : View(conte
                 fg = Color.rgb(226, 128, 128)
             }
             else -> {
-                fillRRect(c, l, tp, r, bt, rad, Color.rgb(21, 26, 36))
-                fg = Color.rgb(92, 101, 120)
+                fillRRect(c, l, tp, r, bt, rad, Ui.DISABLED_BG)
+                fg = Ui.DISABLED_FG
             }
         }
 

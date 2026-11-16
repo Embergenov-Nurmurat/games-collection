@@ -133,7 +133,6 @@ class ChessView(context: Context, host: Host) : TableGameView(context, host, "ch
     private fun playMove(m: Int) {
         val from = mvFrom(m)
         val to = mvTo(m)
-        val moving = pos.b[from]
         val white = pos.white
         var captured = pos.b[to]
         var capSq = to

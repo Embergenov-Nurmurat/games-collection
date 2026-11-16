@@ -229,7 +229,7 @@ class TttView(context: Context, host: Host) : TableGameView(context, host, "ttt"
         }
 
         // grid
-        line.color = Color.rgb(62, 73, 98)
+        line.color = Ui.GRID
         line.strokeWidth = 3f
         for (i in 1 until n) {
             val o = i * cs

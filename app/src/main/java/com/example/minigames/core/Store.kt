@@ -14,6 +14,16 @@ class Store(context: Context) {
         prefs.edit().putInt(key, v).apply()
     }
 
+    fun getS(key: String): String? = prefs.getString(key, null)
+
+    fun putS(key: String, v: String) {
+        prefs.edit().putString(key, v).apply()
+    }
+
+    fun remove(key: String) {
+        prefs.edit().remove(key).apply()
+    }
+
     fun getB(key: String, def: Boolean): Boolean = prefs.getBoolean(key, def)
 
     fun putB(key: String, v: Boolean) {
@@ -30,6 +40,15 @@ class Store(context: Context) {
     var soundOn: Boolean
         get() = getB("sound", true)
         set(v) = putB("sound", v)
+
+    /** Appearance of the menus and board games: 0 = follow the system, 1 = dark, 2 = light. */
+    var themeMode: Int
+        get() = getI("theme_mode", 1)
+        set(v) = putI("theme_mode", v)
+
+    var musicOn: Boolean
+        get() = getB("music", false)
+        set(v) = putB("music", v)
 
     var haptics: Boolean
         get() = getB("haptics", true)

@@ -12,4 +12,13 @@ interface Host {
 
     /** Close the app. */
     fun finishApp()
+
+    /** Re-reads [Store.themeMode] and updates [Ui.dark]. */
+    fun applyTheme()
+
+    /** Opens the system share sheet with a plain text (e.g. a chess game in PGN). */
+    fun shareText(text: String)
+
+    /** Starts / stops the background music according to [Store.musicOn]. */
+    fun updateMusic()
 }

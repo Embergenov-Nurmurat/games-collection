@@ -571,7 +571,7 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
         )
     }
 
-    override fun draw(c: Canvas) {
+    override fun drawScreen(c: Canvas) {
         ensureShaders()
         val nm = nightMix
         drawSky(c)

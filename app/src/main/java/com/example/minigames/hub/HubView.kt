@@ -99,7 +99,7 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
 
     // ------------------------------- drawing --------------------------------
 
-    override fun draw(c: Canvas) {
+    override fun drawScreen(c: Canvas) {
         drawBackdrop(c)
         if (page == Page.HOME) drawHome(c) else drawSettings(c)
     }

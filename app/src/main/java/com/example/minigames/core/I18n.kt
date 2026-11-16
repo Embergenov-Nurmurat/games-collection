@@ -29,6 +29,11 @@ object I18n {
         return a[lang]
     }
 
+    /** Adds the texts of a game ("key" to arrayOf(EN, RU, UZ)). */
+    fun register(m: Map<String, Array<String>>) {
+        TABLE.putAll(m)
+    }
+
     private fun e(en: String, ru: String, uz: String) = arrayOf(en, ru, uz)
 
     private val TABLE: HashMap<String, Array<String>> = hashMapOf(
@@ -127,7 +132,22 @@ object I18n {
         "new_badge" to e("NEW", "НОВЫЙ", "YANGI"),
         "new_skin_x" to e("NEW SKIN: {0}!", "НОВЫЙ ОБРАЗ: {0}!", "YANGI OBRAZ: {0}!"),
         "next_skin" to e("NEXT SKIN AT SCORE {0}", "СЛЕДУЮЩИЙ ОБРАЗ: РЕКОРД {0}", "KEYINGI OBRAZ: REKORD {0}"),
-        "all_skins" to e("ALL SKINS UNLOCKED!", "ВСЕ ОБРАЗЫ ОТКРЫТЫ!", "BARCHA OBRAZLAR OCHILDI!")
+        "all_skins" to e("ALL SKINS UNLOCKED!", "ВСЕ ОБРАЗЫ ОТКРЫТЫ!", "BARCHA OBRAZLAR OCHILDI!"),
+
+        // --- clocks, saved games, appearance, music, achievements ---
+        "time_x" to e("TIME: {0}", "ВРЕМЯ: {0}", "VAQT: {0}"),
+        "time_off" to e("NO LIMIT", "БЕЗ ЛИМИТА", "CHEKLOVSIZ"),
+        "min_x" to e("{0} MIN", "{0} МИН", "{0} DAQ"),
+        "r_timeout" to e("TIME IS UP", "ВРЕМЯ ВЫШЛО", "VAQT TUGADI"),
+        "f2f_x" to e("FACE TO FACE: {0}", "ЛИЦОМ К ЛИЦУ: {0}", "YUZMA-YUZ: {0}"),
+        "ui_x" to e("APPEARANCE: {0}", "ОФОРМЛЕНИЕ: {0}", "KO‘RINISH: {0}"),
+        "ui_dark" to e("DARK", "ТЁМНОЕ", "QORA"),
+        "ui_light" to e("LIGHT", "СВЕТЛОЕ", "OQ"),
+        "music_x" to e("MUSIC: {0}", "МУЗЫКА: {0}", "MUSIQA: {0}"),
+        "achievements" to e("ACHIEVEMENTS", "ДОСТИЖЕНИЯ", "YUTUQLAR"),
+        "ach_unlocked" to e("ACHIEVEMENT UNLOCKED", "ДОСТИЖЕНИЕ ПОЛУЧЕНО", "YUTUQ OCHILDI"),
+        "ach_count" to e("{0} OF {1} UNLOCKED", "ОТКРЫТО {0} ИЗ {1}", "{1} TADAN {0} TASI OCHILGAN"),
+        "locked" to e("LOCKED", "НЕ ОТКРЫТО", "YOPIQ")
     )
 }
 

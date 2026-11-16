@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import com.example.minigames.core.BaseView
+import com.example.minigames.core.Achievements
 import com.example.minigames.core.Button
 import com.example.minigames.core.GameId
 import com.example.minigames.core.Host
@@ -11,6 +12,8 @@ import com.example.minigames.core.Sfx
 import com.example.minigames.core.Ui
 import com.example.minigames.core.W
 import com.example.minigames.core.clampF
+import com.example.minigames.core.mixC
+import com.example.minigames.core.withA
 import com.example.minigames.core.easeOutBack
 import com.example.minigames.core.t
 import kotlin.random.Random
@@ -22,6 +25,14 @@ import kotlin.random.Random
  *  - a result panel, statistics, background AI thread, "thinking" indicator.
  *
  * Side numbering: 0 = the side that moves first (white / X), 1 = the second side.
+ *
+ * Optional features a subclass switches on:
+ *  - [supportsClock]: chess clocks (setup button "TIME", pills in the title bar). The subclass calls
+ *    [setClock] with the side to move after every move and [stopClock] when the game ends.
+ *  - [supportsF2f]: "face to face" option for two players on one phone (the subclass draws the pieces of
+ *    side 1 upside down when [f2f] is true).
+ *  - [saveState] / [loadState]: the game is stored when the player leaves or the app pauses; the setup
+ *    screen then offers "Continue".
  */
 abstract class TableGameView(
     context: Context,
@@ -31,6 +42,11 @@ abstract class TableGameView(
 ) : BaseView(context, host) {
 
     protected enum class Phase { SETUP, PLAY, OVER }
+
+    private companion object {
+        /** Minutes per side for the "time" option (0 = no limit). */
+        val TIME_MIN = intArrayOf(0, 3, 5, 10)
+    }
 
     protected var phase = Phase.SETUP
 
@@ -48,6 +64,23 @@ abstract class TableGameView(
 
     protected var thinking = false
     private var aiGen = 0
+
+    // --- optional features (see the class comment) ---
+    /** Override with a getter (`override val supportsClock: Boolean get() = true`), not an initialiser. */
+    protected open val supportsClock: Boolean get() = false
+    protected open val supportsF2f: Boolean get() = false
+    /** False for games without a first-move choice. */
+    protected open val hasSideOption: Boolean get() = true
+
+    protected var timeOpt = store.getI("${key}_time", 0).coerceIn(0, 3)
+    protected var f2fOpt = store.getB("${key}_f2f", false)
+    protected val f2f: Boolean get() = supportsF2f && !vsAi && f2fOpt
+    protected val clockOn: Boolean get() = supportsClock && timeOpt > 0
+
+    /** Remaining time in ms of side 0 and side 1. */
+    protected val clockMs = LongArray(2)
+    private var clockSide = -1
+    private var hasSave = store.getS("${key}_save") != null
 
     private var message = ""
     private var messageT = 0
@@ -75,13 +108,34 @@ abstract class TableGameView(
 
     private val sideBtn: Button = btn(
         { t("side_x", if (sideOpt == 2) t("random") else sideName(sideOpt)) },
-        W / 2f, 394f, 320f, 52f, style = { 1 }, visible = { vsAi }
+        W / 2f, 394f, 320f, 52f, style = { 1 }, visible = { vsAi && hasSideOption }
     ) {
         sideOpt = (sideOpt + 1) % 3
         store.putI("${key}_side", sideOpt)
     }
 
-    private val playBtn: Button = btn({ t("play") }, W / 2f, 598f, 280f, 60f) { startGame() }
+    private val timeBtn: Button = btn(
+        { t("time_x", if (timeOpt == 0) t("time_off") else t("min_x", TIME_MIN[timeOpt])) },
+        W / 2f, 460f, 320f, 52f, style = { if (timeOpt == 0) 1 else 2 }, visible = { supportsClock }
+    ) {
+        timeOpt = (timeOpt + 1) % TIME_MIN.size
+        store.putI("${key}_time", timeOpt)
+    }
+
+    private val f2fBtn: Button = btn(
+        { t("f2f_x", if (f2fOpt) t("on") else t("off")) },
+        W / 2f, 526f, 320f, 52f, style = { if (f2fOpt) 2 else 1 }, visible = { supportsF2f && !vsAi }
+    ) {
+        f2fOpt = !f2fOpt
+        store.putB("${key}_f2f", f2fOpt)
+    }
+
+    private val playBtn: Button =
+        btn({ t("play") }, W / 2f, 604f, 280f, 60f, visible = { !hasSave }) { startGame() }
+    private val continueBtn: Button =
+        btn({ t("resume") }, 150f, 604f, 190f, 58f, visible = { hasSave }) { resumeGame() }
+    private val startNewBtn: Button =
+        btn({ t("new_game") }, 340f, 604f, 190f, 58f, style = { 1 }, visible = { hasSave }) { startGame() }
 
     protected val undoBtn: Button =
         btn({ t("undo") }, 90f, 684f, 140f, 46f, style = { 1 }, enabled = { canUndo() }) { doUndo() }
@@ -92,7 +146,7 @@ abstract class TableGameView(
     private val againBtn: Button = btn({ t("again") }, 150f, 452f, 150f, 50f) { startGame() }
     private val menuBtn: Button = btn({ t("menu") }, 330f, 452f, 150f, 50f, style = { 1 }) { phase = Phase.SETUP }
 
-    private val setupAll: List<Button> by lazy { setupBtns + listOf(playBtn, backBtn) }
+    private val setupAll: List<Button> by lazy { setupBtns + listOf(playBtn, continueBtn, startNewBtn, backBtn) }
     private val playAll: List<Button> by lazy { listOf(backBtn, undoBtn, hintBtn, newBtn) }
     private val overAll: List<Button> by lazy { listOf(againBtn, menuBtn, backBtn) }
 
@@ -100,6 +154,8 @@ abstract class TableGameView(
         setupBtns.add(modeBtn)
         setupBtns.add(levelBtn)
         setupBtns.add(sideBtn)
+        setupBtns.add(timeBtn)
+        setupBtns.add(f2fBtn)
         relayout()
     }
 
@@ -140,6 +196,15 @@ abstract class TableGameView(
     protected abstract fun canHint(): Boolean
     protected abstract fun doHint()
 
+    /** Serialises the running game (moves so far, ...) into a string, or null when it cannot be saved. */
+    protected open fun saveState(): String? = null
+
+    /**
+     * Rebuilds a game from [saveState]'s string. The base class has restored vsAi, level, humanSide,
+     * clocks and set the phase to PLAY; the subclass sets up the board and, when it is the computer's turn,
+     * starts the computer (e.g. via its `maybeAiMove()`). Return false when the data is unusable.
+     */
+    protected open fun loadState(s: String): Boolean = false
 
     // ------------------------------- flow -----------------------------------
 
@@ -159,17 +224,102 @@ abstract class TableGameView(
         message = ""
         messageT = 0
         particles.clear()
+        clearSave()
+        val start = if (clockOn) TIME_MIN[timeOpt] * 60_000L else 0L
+        clockMs[0] = start
+        clockMs[1] = start
+        clockSide = if (clockOn) 0 else -1
         onNewGame()
+    }
+
+    // ------------------------------ clocks ----------------------------------
+
+    /** The clock of [side] runs from now on (the other one stops). */
+    protected fun setClock(side: Int) {
+        clockSide = if (clockOn) side else -1
+    }
+
+    protected fun stopClock() {
+        clockSide = -1
+    }
+
+    // ------------------------- saving and continuing -------------------------
+
+    private fun clearSave() {
+        store.remove("${key}_save")
+        hasSave = false
+    }
+
+    /** Stores the running game so that the setup screen can offer "Continue". */
+    protected fun persist() {
+        if (phase != Phase.PLAY || result != 0) return
+        val body = try {
+            saveState()
+        } catch (e: Throwable) {
+            null
+        } ?: return
+        val head = "v1|${if (vsAi) 1 else 0}|$level|$humanSide|$timeOpt|${clockMs[0]}|${clockMs[1]}|$clockSide|${if (f2fOpt) 1 else 0}"
+        store.putS("${key}_save", head + "\n" + body)
+        hasSave = true
+    }
+
+    private fun resumeGame() {
+        val raw = store.getS("${key}_save")
+        val nl = raw?.indexOf('\n') ?: -1
+        if (raw == null || nl < 0) {
+            clearSave()
+            return
+        }
+        try {
+            val h = raw.substring(0, nl).split('|')
+            vsAi = h[1] == "1"
+            level = h[2].toInt().coerceIn(0, 2)
+            humanSide = h[3].toInt()
+            timeOpt = h[4].toInt().coerceIn(0, 3)
+            clockMs[0] = h[5].toLong()
+            clockMs[1] = h[6].toLong()
+            clockSide = h[7].toInt()
+            f2fOpt = h[8] == "1"
+        } catch (e: Exception) {
+            clearSave()
+            return
+        }
+        cancelAi()
+        result = 0
+        reasonKey = ""
+        message = ""
+        messageT = 0
+        overT = 0
+        particles.clear()
+        phase = Phase.PLAY
+        val ok = try {
+            loadState(raw.substring(nl + 1))
+        } catch (e: Exception) {
+            false
+        }
+        if (!ok) {
+            clearSave()
+            phase = Phase.SETUP
+        }
+    }
+
+    override fun onHostPause() {
+        persist()
+        super.onHostPause()
     }
 
     protected fun finishGame(res: Int, reason: String) {
         cancelAi()
+        stopClock()
+        clearSave()
         result = res
         reasonKey = reason
         phase = Phase.OVER
         overT = 0
         val humanWon = vsAi && res == humanSide + 1
         if (vsAi) store.addStat(key, if (res == 3) 2 else if (humanWon) 0 else 1)
+        Achievements.recordGame(store, humanWon)
+        if (humanWon && level == 2) Achievements.unlock(store, "${key}_hard")
         sfx.play(if (res == 3) Sfx.Kind.DRAW else if (!vsAi || humanWon) Sfx.Kind.WIN else Sfx.Kind.LOSE)
         if (res != 3 && (!vsAi || humanWon)) confetti()
         haptic(true)
@@ -237,6 +387,7 @@ abstract class TableGameView(
         when (phase) {
             Phase.SETUP -> leaveTo(GameId.HUB)
             else -> {
+                persist()
                 cancelAi()
                 phase = Phase.SETUP
             }
@@ -249,19 +400,27 @@ abstract class TableGameView(
     override fun update() {
         if (messageT > 0) messageT--
         if (phase == Phase.OVER) overT++
+        if (phase == Phase.PLAY && result == 0 && clockSide in 0..1) {
+            clockMs[clockSide] -= 17L
+            if (clockMs[clockSide] <= 0L) {
+                val loser = clockSide
+                clockMs[loser] = 0L
+                finishGame(if (loser == 0) 2 else 1, "r_timeout")
+            }
+        }
         updateClouds(0.1f)
         if (phase != Phase.SETUP) onUpdate()
     }
 
     // ------------------------------- drawing --------------------------------
 
-    override fun draw(c: Canvas) {
+    override fun drawScreen(c: Canvas) {
         drawBackdrop(c)
 
         if (phase == Phase.SETUP) {
             drawSetup(c)
         } else {
-            text(c, t(titleKey), W / 2f + 20f, 62f, 24f, Ui.TEXT, maxW = 280f, shadow = false)
+            if (clockOn) drawClocks(c) else text(c, t(titleKey), W / 2f + 20f, 62f, 24f, Ui.TEXT, maxW = 280f, shadow = false)
             drawGame(c)
             drawStatus(c)
             if (phase == Phase.PLAY) {
@@ -273,6 +432,22 @@ abstract class TableGameView(
             if (phase == Phase.OVER) drawOver(c)
         }
         drawParticles(c)
+    }
+
+    private fun drawClocks(c: Canvas) {
+        for (side in 0..1) {
+            val cx = if (side == 0) 178f else 302f
+            val running = clockSide == side && phase == Phase.PLAY
+            val ms = clockMs[side]
+            val low = ms < 20_000L
+            fillRRect(c, cx - 56f, 40f, cx + 56f, 84f, 12f, if (running) mixC(Ui.SURFACE, accent, 0.18f) else Ui.SURFACE)
+            strokeRRect(c, cx - 56f, 40f, cx + 56f, 84f, 12f, if (running) accent else Ui.BORDER, 1.5f)
+            fillOval(c, cx - 46f, 54f, cx - 30f, 70f, if (side == 0) Color.rgb(246, 246, 240) else Color.rgb(44, 52, 72))
+            strokeOval(c, cx - 46f, 54f, cx - 30f, 70f, withA(Ui.MUTED, 0.8f), 1.5f)
+            val sec = ((ms + 999L) / 1000L).toInt()
+            val txt = "%d:%02d".format(sec / 60, sec % 60)
+            text(c, txt, cx + 12f, 70f, 20f, if (low) Ui.DANGER else Ui.TEXT, shadow = false)
+        }
     }
 
     private fun drawSetup(c: Canvas) {
