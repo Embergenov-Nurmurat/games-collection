@@ -454,7 +454,7 @@ abstract class BaseView(context: Context, protected val host: Host) : View(conte
         textFill.textAlign = Paint.Align.CENTER
     }
 
-    protected fun measure(s: String, size: Float): Float {
+    protected fun textW(s: String, size: Float): Float {
         applyFace(size, 0.05f)
         textFill.textSize = size
         return textFill.measureText(s)

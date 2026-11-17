@@ -154,7 +154,7 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
         // texts (left aligned)
         val left = l + 100f
         val title = t(card.titleKey)
-        val tw = min(measure(title, 26f), 250f)
+        val tw = min(textW(title, 26f), 250f)
         text(c, title, left + tw / 2f, -2f, 26f, Ui.TEXT, maxW = 250f, shadow = false)
         plainText(c, stats(card.id), left, 26f, 15f, Ui.MUTED, -1, 250f)
 

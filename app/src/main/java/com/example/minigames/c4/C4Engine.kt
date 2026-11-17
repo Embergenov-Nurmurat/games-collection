@@ -144,11 +144,9 @@ class C4Board {
 }
 
 /** Alpha-beta searcher with a transposition table; one instance per search. */
-class C4Search(private val deadlineNs: Long) {
+class C4Search(private val deadlineNs: Long, private val ttBits: Int = 18) {
     companion object {
         const val WIN = 10000
-        private const val TT_BITS = 18
-        private const val TT_SIZE = 1 shl TT_BITS
 
         private val WINDOWS: LongArray = run {
             val l = ArrayList<Long>()
@@ -167,14 +165,14 @@ class C4Search(private val deadlineNs: Long) {
         private val WEIGHT = intArrayOf(0, 1, 8, 40, 0)
     }
 
-    private val keys = LongArray(TT_SIZE)
-    private val data = IntArray(TT_SIZE)
+    private val keys = LongArray(1 shl ttBits)
+    private val data = IntArray(1 shl ttBits)
     var nodes = 0L
         private set
     var aborted = false
         private set
 
-    private fun ttIndex(key: Long): Int = ((key * -7046029254386353131L) ushr (64 - TT_BITS)).toInt()
+    private fun ttIndex(key: Long): Int = ((key * -7046029254386353131L) ushr (64 - ttBits)).toInt()
 
     /** Static evaluation from the point of view of the side to move. */
     fun eval(b: C4Board): Int {
@@ -388,16 +386,16 @@ object C4Ai {
         return when (level) {
             0 -> {
                 if (rnd.nextFloat() < 0.30f) return legal[rnd.nextInt(legal.size)]
-                val s = C4Search(System.nanoTime() + 300_000_000L)
+                val s = C4Search(System.nanoTime() + 300_000_000L, 14)
                 val sc = s.scoreMoves(work, 2)
                 pickAmong(legal, sc, 2, rnd)
             }
             1 -> {
-                val s = C4Search(System.nanoTime() + 500_000_000L)
+                val s = C4Search(System.nanoTime() + 500_000_000L, 16)
                 val sc = s.scoreMoves(work, 5)
                 if (s.aborted) legal[rnd.nextInt(legal.size)] else pickAmong(legal, sc, 4, rnd)
             }
-            else -> hard(work, 42, 650L)
+            else -> hard(work, 42, 800L)
         }
     }
 
@@ -410,7 +408,8 @@ object C4Ai {
 
     /** Strong move: iterative deepening up to [maxDepth] within [ms]. */
     fun hard(b: C4Board, maxDepth: Int, ms: Long): Int {
-        val s = C4Search(System.nanoTime() + ms * 1_000_000L)
+        if (b.count == 0) return 3 // the centre column is the only winning first move
+        val s = C4Search(System.nanoTime() + ms * 1_000_000L, 20)
         val m = s.bestMove(b.copy(), maxDepth)
         return if (m >= 0 && b.canPlay(m)) m else b.legalMoves().firstOrNull() ?: -1
     }
