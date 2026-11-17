@@ -19,9 +19,9 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # Shu qismni qo'shing: Android SDK ni sozlash
-      - name: Android SDK ni sozlash
-        uses: android-actions/setup-android@v3
+      - name: local.properties yaratish
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
       - name: Gradle ruxsatini berish
         run: chmod +x gradlew
