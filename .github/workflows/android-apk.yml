@@ -19,6 +19,10 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      # Shu qismni qo'shing: Android SDK ni sozlash
+      - name: Android SDK ni sozlash
+        uses: android-actions/setup-android@v3
+
       - name: Gradle ruxsatini berish
         run: chmod +x gradlew
 
