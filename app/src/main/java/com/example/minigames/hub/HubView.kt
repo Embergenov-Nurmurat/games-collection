@@ -3,7 +3,10 @@ package com.example.minigames.hub
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import com.example.minigames.backgammon.BackgammonIcon
+import com.example.minigames.c4.C4Icon
 import com.example.minigames.chess.KNIGHT
+import com.example.minigames.g2048.Game2048Icon
 import com.example.minigames.chess.PieceArt
 import com.example.minigames.core.BaseView
 import com.example.minigames.core.Button
@@ -33,18 +36,21 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
     private var page = Page.HOME
 
     private fun card(id: GameId, titleKey: String, cy: Float, accent: Int): Card {
-        val b = btn({ "" }, W / 2f, cy, 400f, 92f) { leaveTo(id) }
+        val b = btn({ "" }, W / 2f, cy, 400f, 66f) { leaveTo(id) }
         return Card(id, titleKey, accent, b)
     }
 
     private val cards = listOf(
-        card(GameId.FLAPPY, "flappy_title", 232f, Color.rgb(79, 195, 247)),
-        card(GameId.TTT, "ttt_title", 337f, Color.rgb(155, 140, 255)),
-        card(GameId.CHESS, "chess_title", 442f, Color.rgb(98, 214, 164)),
-        card(GameId.CHECKERS, "checkers_title", 547f, Color.rgb(255, 159, 90))
+        card(GameId.FLAPPY, "flappy_title", 172f, Color.rgb(79, 195, 247)),
+        card(GameId.TTT, "ttt_title", 246f, Color.rgb(155, 140, 255)),
+        card(GameId.CHESS, "chess_title", 320f, Color.rgb(98, 214, 164)),
+        card(GameId.CHECKERS, "checkers_title", 394f, Color.rgb(255, 159, 90)),
+        card(GameId.C4, "c4_title", 468f, C4Icon.ACCENT),
+        card(GameId.BACKGAMMON, "bg_title", 542f, BackgammonIcon.ACCENT),
+        card(GameId.G2048, "g48_title", 616f, Game2048Icon.ACCENT)
     )
 
-    private val settingsBtn = btn({ t("settings") }, W / 2f, 650f, 240f, 50f, style = { 1 }) { page = Page.SETTINGS }
+    private val settingsBtn = btn({ t("settings") }, W / 2f, 676f, 240f, 44f, style = { 1 }) { page = Page.SETTINGS }
     private val langQuick = btn({ I18n.codes[I18n.lang] }, W - 50f, 52f, 76f, 44f, style = { 1 }) {
         setLanguage((I18n.lang + 1) % I18n.codes.size)
     }
@@ -105,7 +111,7 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
     }
 
     private fun drawHome(c: Canvas) {
-        drawTitle(c, t("hub_title"), W / 2f, 122f, 44f, Ui.TEXT, 400f)
+        drawTitle(c, t("hub_title"), W / 2f, 94f, 40f, Ui.TEXT, 400f)
         for (card in cards) drawCard(c, card)
         drawButton(c, settingsBtn)
         drawButton(c, langQuick)
@@ -124,6 +130,9 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
         }
         GameId.TTT -> short("ttt")
         GameId.CHESS -> short("chess")
+        GameId.C4 -> short("c4")
+        GameId.BACKGAMMON -> short("bg")
+        GameId.G2048 -> t("best_x", store.getI("g48_best", 0))
         else -> short("checkers")
     }
 
@@ -148,15 +157,19 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
 
         // icon medallion
         val ix = l + 54f
-        fillOval(c, ix - 32f, -32f, ix + 32f, 32f, withA(card.accent, 0.14f))
-        drawIcon(c, card.id, card.accent, ix, 0f)
+        fillOval(c, ix - 26f, -26f, ix + 26f, 26f, withA(card.accent, 0.14f))
+        c.save()
+        c.translate(ix, 0f)
+        c.scale(0.8f, 0.8f)
+        drawIcon(c, card.id, card.accent, 0f, 0f)
+        c.restore()
 
         // texts (left aligned)
         val left = l + 100f
         val title = t(card.titleKey)
-        val tw = min(textW(title, 26f), 250f)
-        text(c, title, left + tw / 2f, -2f, 26f, Ui.TEXT, maxW = 250f, shadow = false)
-        plainText(c, stats(card.id), left, 26f, 15f, Ui.MUTED, -1, 250f)
+        val tw = min(textW(title, 22f), 250f)
+        text(c, title, left + tw / 2f, -8f, 22f, Ui.TEXT, maxW = 250f, shadow = false)
+        plainText(c, stats(card.id), left, 16f, 14f, Ui.MUTED, -1, 250f)
 
         // chevron
         line.color = Ui.MUTED
@@ -191,6 +204,9 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
                 c.drawCircle(x + 13f, y + 0f, 11f, line)
             }
             GameId.CHESS -> PieceArt.draw(c, KNIGHT, true, x, y - 1f, 62f)
+            GameId.C4 -> C4Icon.draw(c, x, y, col)
+            GameId.BACKGAMMON -> BackgammonIcon.draw(c, x, y, col)
+            GameId.G2048 -> Game2048Icon.draw(c, x, y, col)
             else -> {
                 disc(c, x - 10f, y + 8f, Ui.TEXT)
                 disc(c, x + 10f, y - 8f, col)

@@ -19,6 +19,12 @@ import com.example.minigames.core.Sfx
 import com.example.minigames.core.Store
 import com.example.minigames.core.Ui
 import com.example.minigames.flappy.FlappyView
+import com.example.minigames.backgammon.BG_STRINGS
+import com.example.minigames.backgammon.BackgammonView
+import com.example.minigames.c4.C4_STRINGS
+import com.example.minigames.c4.C4View
+import com.example.minigames.g2048.G2048_STRINGS
+import com.example.minigames.g2048.Game2048View
 import com.example.minigames.hub.HubView
 import com.example.minigames.tictactoe.TttView
 
@@ -44,6 +50,9 @@ class MainActivity : Activity(), Host {
         }
 
         store = Store(this)
+        I18n.register(C4_STRINGS)
+        I18n.register(BG_STRINGS)
+        I18n.register(G2048_STRINGS)
         I18n.lang = if (store.lang in 0 until I18n.codes.size) store.lang else I18n.detect()
         applyTheme()
         sfx = Sfx(this)
@@ -61,6 +70,9 @@ class MainActivity : Activity(), Host {
             GameId.TTT -> TttView(this, this)
             GameId.CHESS -> ChessView(this, this)
             GameId.CHECKERS -> CheckersView(this, this)
+            GameId.C4 -> C4View(this, this)
+            GameId.BACKGAMMON -> BackgammonView(this, this)
+            GameId.G2048 -> Game2048View(this, this)
         }
         current = view
         setContentView(view)
