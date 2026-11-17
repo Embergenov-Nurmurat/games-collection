@@ -6,7 +6,7 @@ import android.graphics.Color
 import com.example.minigames.backgammon.BackgammonIcon
 import com.example.minigames.c4.C4Icon
 import com.example.minigames.chess.KNIGHT
-import com.example.minigames.g2048.Game2048Icon
+import com.example.minigames.g2048.G2048Icon
 import com.example.minigames.chess.PieceArt
 import com.example.minigames.core.BaseView
 import com.example.minigames.core.Button
@@ -47,7 +47,7 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
         card(GameId.CHECKERS, "checkers_title", 394f, Color.rgb(255, 159, 90)),
         card(GameId.C4, "c4_title", 468f, C4Icon.ACCENT),
         card(GameId.BACKGAMMON, "bg_title", 542f, BackgammonIcon.ACCENT),
-        card(GameId.G2048, "g48_title", 616f, Game2048Icon.ACCENT)
+        card(GameId.G2048, "g48_title", 616f, G2048Icon.ACCENT)
     )
 
     private val settingsBtn = btn({ t("settings") }, W / 2f, 676f, 240f, 44f, style = { 1 }) { page = Page.SETTINGS }
@@ -206,7 +206,7 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
             GameId.CHESS -> PieceArt.draw(c, KNIGHT, true, x, y - 1f, 62f)
             GameId.C4 -> C4Icon.draw(c, x, y, col)
             GameId.BACKGAMMON -> BackgammonIcon.draw(c, x, y, col)
-            GameId.G2048 -> Game2048Icon.draw(c, x, y, col)
+            GameId.G2048 -> G2048Icon.draw(c, x, y, col)
             else -> {
                 disc(c, x - 10f, y + 8f, Ui.TEXT)
                 disc(c, x + 10f, y - 8f, col)
