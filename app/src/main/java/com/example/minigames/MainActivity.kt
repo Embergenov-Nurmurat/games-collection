@@ -10,7 +10,6 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
 import com.example.minigames.checkers.CheckersView
-import com.example.minigames.chess.CHESS_STRINGS
 import com.example.minigames.chess.ChessView
 import com.example.minigames.core.BaseView
 import com.example.minigames.core.GameId
@@ -20,18 +19,12 @@ import com.example.minigames.core.Sfx
 import com.example.minigames.core.Store
 import com.example.minigames.core.Ui
 import com.example.minigames.flappy.FlappyView
-import com.example.minigames.backgammon.BG_STRINGS
-import com.example.minigames.battleship.BS_STRINGS
 import com.example.minigames.battleship.BattleshipView
 import com.example.minigames.backgammon.BackgammonView
-import com.example.minigames.c4.C4_STRINGS
 import com.example.minigames.c4.C4View
-import com.example.minigames.g2048.G2048_STRINGS
 import com.example.minigames.g2048.Game2048View
 import com.example.minigames.hub.HubView
-import com.example.minigames.mines.MINES_STRINGS
 import com.example.minigames.mines.MinesView
-import com.example.minigames.sudoku.SUDOKU_STRINGS
 import com.example.minigames.sudoku.SudokuView
 import com.example.minigames.tictactoe.TttView
 
@@ -57,13 +50,7 @@ class MainActivity : Activity(), Host {
         }
 
         store = Store(this)
-        I18n.register(C4_STRINGS)
-        I18n.register(BG_STRINGS)
-        I18n.register(G2048_STRINGS)
-        I18n.register(SUDOKU_STRINGS)
-        I18n.register(MINES_STRINGS)
-        I18n.register(BS_STRINGS)
-        I18n.register(CHESS_STRINGS)
+        GameStrings.registerAll()
         I18n.lang = if (store.lang in 0 until I18n.codes.size) store.lang else I18n.detect()
         applyTheme()
         sfx = Sfx(this)
