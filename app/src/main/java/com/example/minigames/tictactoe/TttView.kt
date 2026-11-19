@@ -117,6 +117,70 @@ class TttView(context: Context, host: Host) : TableGameView(context, host, "ttt"
     private fun humanCanMove(): Boolean =
         phase == Phase.PLAY && !thinking && pendingRes == 0 && isHumanTurn(turn - 1)
 
+    // ------------------------- saving and continuing -------------------------
+
+    /** "T1;size;m1,m2,..." - the moves in order; X always moves first, so the turn follows from the count. */
+    override fun saveState(): String? {
+        if (pendingRes != 0 || moves.isEmpty()) return null
+        return "T1;${board.n};" + moves.joinToString(",")
+    }
+
+    override fun loadState(s: String): Boolean {
+        val parts = s.trim().split(';')
+        if (parts.size != 3 || parts[0] != "T1") return false
+        val n = parts[1].toIntOrNull() ?: return false
+        if (n != 3 && n != 5) return false
+        val list = ArrayList<Int>()
+        for (tok in parts[2].split(',')) {
+            list.add(tok.toIntOrNull() ?: return false)
+        }
+        if (list.isEmpty() || list.size >= n * n) return false
+        val b = TttBoard(n, if (n == 3) 3 else 4)
+        var who = 1
+        for ((i, cell) in list.withIndex()) {
+            if (cell < 0 || cell >= n * n || b.cells[cell] != 0) return false
+            b.cells[cell] = who
+            if (b.winLine() != null) return false          // a finished game is never saved
+            who = 3 - who
+            if (i == list.size - 1 && b.isFull()) return false
+        }
+        board = b
+        moves.clear()
+        moves.addAll(list)
+        turn = who
+        anim = FloatArray(n * n) { 1f }
+        winLine = null
+        winAnim = 0f
+        lastCell = list[list.size - 1]
+        hintCell = -1
+        pendingRes = 0
+        maybeAiMove()
+        return true
+    }
+
+    /** A decided game waits a moment before the result panel; leaving or pausing must not lose that result. */
+    private fun flushPending() {
+        if (pendingRes == 0 || phase != Phase.PLAY) return
+        val res = pendingRes
+        pendingRes = 0
+        when (res) {
+            1 -> scoreX++
+            2 -> scoreO++
+            else -> scoreDraw++
+        }
+        finishGame(res, pendingReason)
+    }
+
+    override fun onBack(): Boolean {
+        if (!fading) flushPending()
+        return super.onBack()
+    }
+
+    override fun onHostPause() {
+        flushPending()
+        super.onHostPause()
+    }
+
     // ------------------------------- input ----------------------------------
 
     override fun onPointerDown(x: Float, y: Float) {
@@ -164,16 +228,7 @@ class TttView(context: Context, host: Host) : TableGameView(context, host, "ttt"
         if (winLine != null && winAnim < 1f) winAnim = min(1f, winAnim + 0.045f)
         if (pendingRes != 0 && phase == Phase.PLAY) {
             pendingT--
-            if (pendingT <= 0) {
-                val res = pendingRes
-                pendingRes = 0
-                when (res) {
-                    1 -> scoreX++
-                    2 -> scoreO++
-                    else -> scoreDraw++
-                }
-                finishGame(res, pendingReason)
-            }
+            if (pendingT <= 0) flushPending()
         }
     }
 

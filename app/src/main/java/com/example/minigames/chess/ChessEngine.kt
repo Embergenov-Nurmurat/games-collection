@@ -541,6 +541,10 @@ class ChessAI(
         const val MATE = 100_000
     }
 
+    /** Score (centipawns, from the side to move) of the move chosen by the last [bestMove] call. */
+    var lastScore = 0
+        private set
+
     private var deadline = 0L
     private var aborted = false
     private var nodes = 0
@@ -635,7 +639,10 @@ class ChessAI(
     fun bestMove(p: ChessPos): Int {
         val root = ChessRules.legal(p)
         if (root.isEmpty()) return 0
-        if (root.size == 1) return root[0]
+        if (root.size == 1) {
+            lastScore = ChessEval.eval(p)
+            return root[0]
+        }
 
         deadline = System.nanoTime() + timeMs * 1_000_000L
         nodes = 0
@@ -676,6 +683,7 @@ class ChessAI(
 
         var best = -INF
         for (s in finalScores) if (s > best) best = s
+        lastScore = if (best == -INF) ChessEval.eval(p) else best
         val candidates = ArrayList<Int>()
         for (i in finalMoves.indices) {
             if (finalScores[i] > -INF && finalScores[i] >= best - margin) candidates.add(finalMoves[i])

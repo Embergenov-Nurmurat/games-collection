@@ -4,9 +4,12 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import com.example.minigames.backgammon.BackgammonIcon
+import com.example.minigames.battleship.BattleshipIcon
 import com.example.minigames.c4.C4Icon
 import com.example.minigames.chess.KNIGHT
 import com.example.minigames.g2048.G2048Icon
+import com.example.minigames.sudoku.SudokuIcon
+import com.example.minigames.mines.MinesIcon
 import com.example.minigames.chess.PieceArt
 import com.example.minigames.core.BaseView
 import com.example.minigames.core.Button
@@ -21,6 +24,13 @@ import com.example.minigames.core.withA
 import kotlin.math.max
 import kotlin.math.min
 
+private const val CARD_W = 210f
+private const val CARD_H = 84f
+private const val CARD_GAP = 10f
+private const val CARD_X0 = 129f
+private const val CARD_X1 = 351f
+private const val CARD_Y0 = 182f
+
 private class Card(
     val id: GameId,
     val titleKey: String,
@@ -28,26 +38,32 @@ private class Card(
     val button: Button
 )
 
-/** Home screen: one card per game, plus the global settings (language, sound, vibration). */
+/** Home screen: a grid of game cards (2 columns, room for 10 games), plus the global settings (language, sound, vibration). */
 class HubView(context: Context, host: Host) : BaseView(context, host) {
 
     private enum class Page { HOME, SETTINGS }
 
     private var page = Page.HOME
 
-    private fun card(id: GameId, titleKey: String, cy: Float, accent: Int): Card {
-        val b = btn({ "" }, W / 2f, cy, 400f, 66f) { leaveTo(id) }
+    /** Cards are laid out in a 2-column grid, left to right, top to bottom (index = position in the list). */
+    private fun card(index: Int, id: GameId, titleKey: String, accent: Int): Card {
+        val cx = if (index % 2 == 0) CARD_X0 else CARD_X1
+        val cy = CARD_Y0 + (index / 2) * (CARD_H + CARD_GAP)
+        val b = btn({ "" }, cx, cy, CARD_W, CARD_H) { leaveTo(id) }
         return Card(id, titleKey, accent, b)
     }
 
     private val cards = listOf(
-        card(GameId.FLAPPY, "flappy_title", 172f, Color.rgb(79, 195, 247)),
-        card(GameId.TTT, "ttt_title", 246f, Color.rgb(155, 140, 255)),
-        card(GameId.CHESS, "chess_title", 320f, Color.rgb(98, 214, 164)),
-        card(GameId.CHECKERS, "checkers_title", 394f, Color.rgb(255, 159, 90)),
-        card(GameId.C4, "c4_title", 468f, C4Icon.ACCENT),
-        card(GameId.BACKGAMMON, "bg_title", 542f, BackgammonIcon.ACCENT),
-        card(GameId.G2048, "g48_title", 616f, G2048Icon.ACCENT)
+        card(0, GameId.FLAPPY, "flappy_title", Color.rgb(79, 195, 247)),
+        card(1, GameId.TTT, "ttt_title", Color.rgb(155, 140, 255)),
+        card(2, GameId.CHESS, "chess_title", Color.rgb(98, 214, 164)),
+        card(3, GameId.CHECKERS, "checkers_title", Color.rgb(255, 159, 90)),
+        card(4, GameId.C4, "c4_title", C4Icon.ACCENT),
+        card(5, GameId.BACKGAMMON, "bg_title", BackgammonIcon.ACCENT),
+        card(6, GameId.G2048, "g48_title", G2048Icon.ACCENT),
+        card(7, GameId.SUDOKU, "sd_title", SudokuIcon.ACCENT),
+        card(8, GameId.MINES, "mn_title", MinesIcon.ACCENT),
+        card(9, GameId.BATTLESHIP, "bs_title", BattleshipIcon.ACCENT)
     )
 
     private val settingsBtn = btn({ t("settings") }, W / 2f, 676f, 240f, 44f, style = { 1 }) { page = Page.SETTINGS }
@@ -111,7 +127,7 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
     }
 
     private fun drawHome(c: Canvas) {
-        drawTitle(c, t("hub_title"), W / 2f, 94f, 40f, Ui.TEXT, 400f)
+        drawTitle(c, t("hub_title"), W / 2f, 100f, 40f, Ui.TEXT, 330f)
         for (card in cards) drawCard(c, card)
         drawButton(c, settingsBtn)
         drawButton(c, langQuick)
@@ -133,6 +149,9 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
         GameId.C4 -> short("c4")
         GameId.BACKGAMMON -> short("bg")
         GameId.G2048 -> t("best_x", store.getI("g48_best", 0))
+        GameId.SUDOKU -> t("sd_solved_n", store.stat("sudoku", 0))
+        GameId.MINES -> t("mn_cleared_n", store.stat("mines", 0))
+        GameId.BATTLESHIP -> t("bs_won_n", store.stat("bs", 0))
         else -> short("checkers")
     }
 
@@ -156,26 +175,21 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
         strokeRRect(c, l, tp, r, bt, 18f, mixC(Ui.BORDER, card.accent, 0.35f + 0.65f * press), 1.5f)
 
         // icon medallion
-        val ix = l + 54f
-        fillOval(c, ix - 26f, -26f, ix + 26f, 26f, withA(card.accent, 0.14f))
+        val ix = l + 38f
+        fillOval(c, ix - 24f, -24f, ix + 24f, 24f, withA(card.accent, 0.14f))
         c.save()
         c.translate(ix, 0f)
-        c.scale(0.8f, 0.8f)
+        c.scale(0.64f, 0.64f)
         drawIcon(c, card.id, card.accent, 0f, 0f)
         c.restore()
 
         // texts (left aligned)
-        val left = l + 100f
+        val left = l + 70f
+        val maxText = r - 10f - left
         val title = t(card.titleKey)
-        val tw = min(textW(title, 22f), 250f)
-        text(c, title, left + tw / 2f, -8f, 22f, Ui.TEXT, maxW = 250f, shadow = false)
-        plainText(c, stats(card.id), left, 16f, 14f, Ui.MUTED, -1, 250f)
-
-        // chevron
-        line.color = Ui.MUTED
-        line.strokeWidth = 2.5f
-        c.drawLine(r - 32f, -8f, r - 24f, 0f, line)
-        c.drawLine(r - 24f, 0f, r - 32f, 8f, line)
+        val tw = min(textW(title, 17f), maxText)
+        text(c, title, left + tw / 2f, -3f, 17f, Ui.TEXT, maxW = maxText, shadow = false)
+        plainText(c, stats(card.id), left, 22f, 12f, Ui.MUTED, -1, maxText)
         c.restore()
     }
 
@@ -207,6 +221,9 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
             GameId.C4 -> C4Icon.draw(c, x, y, col)
             GameId.BACKGAMMON -> BackgammonIcon.draw(c, x, y, col)
             GameId.G2048 -> G2048Icon.draw(c, x, y, col)
+            GameId.SUDOKU -> SudokuIcon.draw(c, x, y, col)
+            GameId.MINES -> MinesIcon.draw(c, x, y, col)
+            GameId.BATTLESHIP -> BattleshipIcon.draw(c, x, y, col)
             else -> {
                 disc(c, x - 10f, y + 8f, Ui.TEXT)
                 disc(c, x + 10f, y - 8f, col)

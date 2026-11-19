@@ -133,9 +133,9 @@ abstract class TableGameView(
     private val playBtn: Button =
         btn({ t("play") }, W / 2f, 604f, 280f, 60f, visible = { !hasSave }) { startGame() }
     private val continueBtn: Button =
-        btn({ t("resume") }, 150f, 604f, 190f, 58f, visible = { hasSave }) { resumeGame() }
+        btn({ t("resume") }, 145f, 604f, 180f, 58f, visible = { hasSave }) { resumeGame() }
     private val startNewBtn: Button =
-        btn({ t("new_game") }, 340f, 604f, 190f, 58f, style = { 1 }, visible = { hasSave }) { startGame() }
+        btn({ t("new_game") }, 335f, 604f, 180f, 58f, style = { 1 }, visible = { hasSave }) { startGame() }
 
     protected val undoBtn: Button =
         btn({ t("undo") }, 90f, 684f, 140f, 46f, style = { 1 }, enabled = { canUndo() }) { doUndo() }
@@ -148,7 +148,7 @@ abstract class TableGameView(
 
     private val setupAll: List<Button> by lazy { setupBtns + listOf(playBtn, continueBtn, startNewBtn, backBtn) }
     private val playAll: List<Button> by lazy { listOf(backBtn, undoBtn, hintBtn, newBtn) }
-    private val overAll: List<Button> by lazy { listOf(againBtn, menuBtn, backBtn) }
+    private val overAll: List<Button> by lazy { listOf(againBtn, menuBtn, backBtn) + overExtraButtons() }
 
     init {
         setupBtns.add(modeBtn)
@@ -195,6 +195,9 @@ abstract class TableGameView(
     protected abstract fun doUndo()
     protected abstract fun canHint(): Boolean
     protected abstract fun doHint()
+
+    /** Extra buttons of the result panel (a second row at y = 518, 150 x 50, centres x = 150 and 330). */
+    protected open fun overExtraButtons(): List<Button> = emptyList()
 
     /** Serialises the running game (moves so far, ...) into a string, or null when it cannot be saved. */
     protected open fun saveState(): String? = null
@@ -455,6 +458,8 @@ abstract class TableGameView(
         drawSetupArt(c, W / 2f, 188f)
         for (b in setupBtns) drawButton(c, b)
         drawButton(c, playBtn)
+        drawButton(c, continueBtn)
+        drawButton(c, startNewBtn)
         drawButton(c, backBtn)
         val w = store.stat(key, 0)
         val l = store.stat(key, 1)
@@ -481,7 +486,8 @@ abstract class TableGameView(
         c.translate(W / 2f, 395f)
         c.scale(k, k)
         c.translate(-W / 2f, -395f)
-        drawPanel(c, 50f, 285f, 430f, 500f)
+        val extra = overExtraButtons()
+        drawPanel(c, 50f, 285f, 430f, if (extra.isEmpty()) 500f else 566f)
         val title = when {
             result == 3 -> t("draw_title")
             vsAi -> if (result == humanSide + 1) t("you_win") else t("you_lose")
@@ -496,6 +502,7 @@ abstract class TableGameView(
         if (reasonKey.isNotEmpty()) plainText(c, t(reasonKey), W / 2f, 390f, 16f, Ui.MUTED, 0, 330f)
         drawButton(c, againBtn)
         drawButton(c, menuBtn)
+        for (b in extra) drawButton(c, b)
         c.restore()
     }
 }

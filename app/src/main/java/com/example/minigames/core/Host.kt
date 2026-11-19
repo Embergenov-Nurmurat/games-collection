@@ -1,6 +1,6 @@
 package com.example.minigames.core
 
-enum class GameId { HUB, FLAPPY, TTT, CHESS, CHECKERS, C4, BACKGAMMON, G2048 }
+enum class GameId { HUB, FLAPPY, TTT, CHESS, CHECKERS, C4, BACKGAMMON, G2048, SUDOKU, MINES, BATTLESHIP }
 
 /** What a screen can ask from the activity that hosts it. */
 interface Host {
