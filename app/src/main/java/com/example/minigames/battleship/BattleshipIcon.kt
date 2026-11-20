@@ -4,56 +4,40 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.RectF
-import com.example.minigames.core.Ui
+import com.example.minigames.core.Clay
 
-/** Hub icon: a teal plate with a ship (hull, bridge, funnel, gun) on a wave, flat, text-free, about 64x64. */
+/** Hub icon: a puffy grey ship on blue water on a dark tile (about 64x64). */
 object BattleshipIcon {
     /** Accent colour of the game (sea teal). */
     val ACCENT: Int = Color.rgb(54, 190, 206)
 
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val crest = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
     }
-    private val rf = RectF()
     private val path = Path()
 
     fun draw(c: Canvas, cx: Float, cy: Float, accent: Int) {
-        val half = 29f
-        rf.set(cx - half, cy - half, cx + half, cy + half)
-        fill.color = accent
-        c.drawRoundRect(rf, 10f, 10f, fill)
-
+        Clay.tile(c, cx, cy, accent)
+        val grey = Color.rgb(168, 182, 210)
+        // superstructure
+        Clay.block(c, cx - 3f, cy - 20f, cx + 8f, cy - 9f, 3f, Color.rgb(226, 232, 246))
+        Clay.block(c, cx - 13f, cy - 12f, cx + 9f, cy - 1f, 4f, Color.rgb(210, 220, 240))
+        Clay.block(c, cx - 19f, cy - 17f, cx - 12f, cy - 6f, 3f, Color.rgb(246, 92, 88))   // funnel
+        Clay.bar(c, cx + 8f, cy - 5f, cx + 22f, cy - 10f, 4f, Color.rgb(120, 134, 168))       // gun
         // hull
-        path.reset()
-        path.moveTo(cx - 22f, cy + 2f)
-        path.lineTo(cx + 22f, cy + 2f)
-        path.lineTo(cx + 15f, cy + 12f)
-        path.lineTo(cx - 16f, cy + 12f)
-        path.close()
-        fill.color = Ui.INK
-        c.drawPath(path, fill)
-        // bridge and funnel
-        rf.set(cx - 9f, cy - 8f, cx + 9f, cy + 2f)
-        c.drawRoundRect(rf, 2f, 2f, fill)
-        rf.set(cx - 3.5f, cy - 16f, cx + 3.5f, cy - 8f)
-        c.drawRoundRect(rf, 1.5f, 1.5f, fill)
-        // gun
-        stroke.color = Ui.INK
-        stroke.strokeWidth = 3.2f
-        c.drawLine(cx + 9f, cy - 3f, cx + 20f, cy - 8f, stroke)
-        // waves
-        stroke.color = Color.argb(235, 255, 255, 255)
-        stroke.strokeWidth = 2.6f
+        Clay.poly(c, floatArrayOf(cx - 26f, cy - 2f, cx + 26f, cy - 2f, cx + 17f, cy + 13f, cx - 18f, cy + 13f), grey)
+        // water in front
+        Clay.block(c, cx - 27f, cy + 7f, cx + 27f, cy + 24f, 8f, Color.rgb(62, 150, 235))
+        crest.color = Color.argb(220, 255, 255, 255)
+        crest.strokeWidth = 2.4f
         for (k in 0 until 3) {
-            val x0 = cx - 21f + k * 14f
+            val x0 = cx - 20f + k * 14f
             path.reset()
-            path.moveTo(x0, cy + 20f)
-            path.quadTo(x0 + 3.5f, cy + 16.5f, x0 + 7f, cy + 20f)
-            path.quadTo(x0 + 10.5f, cy + 23.5f, x0 + 14f, cy + 20f)
-            c.drawPath(path, stroke)
+            path.moveTo(x0, cy + 16f)
+            path.quadTo(x0 + 3.5f, cy + 12.5f, x0 + 7f, cy + 16f)
+            path.quadTo(x0 + 10.5f, cy + 19.5f, x0 + 14f, cy + 16f)
+            c.drawPath(path, crest)
         }
     }
 }

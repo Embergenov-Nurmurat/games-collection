@@ -40,7 +40,9 @@ enum class Skin(
     val belly: Int,
     val tail: Int,
     val beakUpper: Int,
-    val beakLower: Int
+    val beakLower: Int,
+    val coinsAt: Int = 0,        // ... and the total number of coins collected reaches this
+    val dailyAt: Int = 0         // ... and the best daily-challenge streak (days in a row) reaches this
 ) {
     CLASSIC(
         "skin_classic", 0,
@@ -66,7 +68,77 @@ enum class Skin(
         "skin_galaxy", 50,
         Color.rgb(210, 160, 255), Color.rgb(100, 50, 190), Color.rgb(240, 225, 255),
         Color.rgb(70, 30, 140), Color.rgb(255, 120, 200), Color.rgb(220, 70, 150)
+    ),
+    // new skins are appended: the chosen skin is stored as an index
+    GOLD(
+        "fl_skin_gold", 0,
+        Color.rgb(255, 244, 160), Color.rgb(224, 170, 24), Color.rgb(255, 249, 214),
+        Color.rgb(190, 130, 20), Color.rgb(255, 140, 60), Color.rgb(230, 100, 40),
+        coinsAt = 150
+    ),
+    SUNSET(
+        "fl_skin_sunset", 0,
+        Color.rgb(255, 196, 136), Color.rgb(240, 90, 96), Color.rgb(255, 232, 218),
+        Color.rgb(200, 60, 112), Color.rgb(255, 214, 84), Color.rgb(240, 160, 40),
+        dailyAt = 3
+    ),
+    SHADOW(
+        "fl_skin_shadow", 75,
+        Color.rgb(126, 136, 158), Color.rgb(38, 44, 64), Color.rgb(156, 166, 190),
+        Color.rgb(26, 30, 46), Color.rgb(255, 122, 92), Color.rgb(230, 72, 62)
     )
+}
+
+/** Scenery of the game: colours of the day (the night colours are shared). */
+enum class Scene(
+    val key: String,
+    val skyTop: Int,
+    val skyBottom: Int,
+    val hillFar: Int,
+    val hillNear: Int,
+    val groundTop: Int,
+    val groundBottom: Int,
+    val groundEdge: Int,
+    val pipeLight: Int,
+    val pipeDark: Int,
+    val snow: Boolean
+) {
+    MEADOW(
+        "fl_scene_meadow",
+        Color.rgb(100, 166, 212), Color.rgb(228, 237, 245), Color.rgb(172, 204, 204), Color.rgb(138, 180, 178),
+        Color.rgb(206, 198, 178), Color.rgb(188, 180, 160), Color.rgb(134, 170, 150),
+        Color.rgb(120, 200, 164), Color.rgb(72, 152, 122), false
+    ),
+    DESERT(
+        "fl_scene_desert",
+        Color.rgb(238, 178, 112), Color.rgb(253, 233, 200), Color.rgb(224, 178, 128), Color.rgb(204, 150, 104),
+        Color.rgb(232, 196, 138), Color.rgb(212, 174, 116), Color.rgb(190, 150, 96),
+        Color.rgb(128, 184, 108), Color.rgb(84, 138, 82), false
+    ),
+    WINTER(
+        "fl_scene_winter",
+        Color.rgb(142, 184, 224), Color.rgb(238, 245, 252), Color.rgb(216, 229, 241), Color.rgb(192, 210, 228),
+        Color.rgb(238, 242, 248), Color.rgb(214, 224, 238), Color.rgb(176, 196, 218),
+        Color.rgb(150, 208, 226), Color.rgb(98, 160, 192), true
+    ),
+    SUNSET(
+        "fl_scene_sunset",
+        Color.rgb(252, 140, 118), Color.rgb(255, 226, 172), Color.rgb(222, 128, 150), Color.rgb(184, 96, 128),
+        Color.rgb(234, 172, 152), Color.rgb(212, 146, 130), Color.rgb(176, 100, 110),
+        Color.rgb(160, 120, 200), Color.rgb(112, 80, 156), false
+    )
+}
+
+/** Source of the current time (a test can replace it, e.g. to play on a particular day). */
+object FlappyClock {
+    var now: () -> Long = { System.currentTimeMillis() }
+
+    /** Number of the current day (local time) counted from 1970-01-01. */
+    fun dayNumber(): Int {
+        val t = now()
+        val off = java.util.TimeZone.getDefault().getOffset(t)
+        return Math.floorDiv(t + off, 86_400_000L).toInt()
+    }
 }
 
 class Pipe(

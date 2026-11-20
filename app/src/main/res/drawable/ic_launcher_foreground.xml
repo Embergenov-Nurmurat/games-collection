@@ -4,46 +4,49 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- tail -->
-    <path
-        android:fillColor="#EE7828"
-        android:strokeColor="#543847"
-        android:strokeWidth="2"
-        android:pathData="M36,50 L24,44 L26,54 L24,62 L36,58 Z" />
-    <!-- body -->
-    <path
-        android:fillColor="#F7BE3C"
-        android:strokeColor="#543847"
-        android:strokeWidth="2.4"
-        android:pathData="M32,54a22,17 0 1,0 44,0a22,17 0 1,0 -44,0" />
-    <!-- belly -->
-    <path
-        android:fillColor="#FFF3C8"
-        android:pathData="M40,60a14,7 0 1,0 28,0a14,7 0 1,0 -28,0" />
-    <!-- wing -->
-    <path
-        android:fillColor="#FFFAEB"
-        android:strokeColor="#543847"
-        android:strokeWidth="2"
-        android:pathData="M38,56a10,6 0 1,0 20,0a10,6 0 1,0 -20,0" />
-    <!-- eye -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:strokeColor="#543847"
-        android:strokeWidth="2"
-        android:pathData="M56,46a7,7 0 1,0 14,0a7,7 0 1,0 -14,0" />
-    <path
-        android:fillColor="#543847"
-        android:pathData="M62,46a3,3 0 1,0 6,0a3,3 0 1,0 -6,0" />
-    <!-- beak -->
-    <path
-        android:fillColor="#FF782D"
-        android:strokeColor="#543847"
-        android:strokeWidth="2"
-        android:pathData="M68,53 L82,55 L68,59 Z" />
-    <path
-        android:fillColor="#E84628"
-        android:strokeColor="#543847"
-        android:strokeWidth="2"
-        android:pathData="M68,59 L80,60 L68,64 Z" />
+    <group android:translateX="6.5" android:translateY="6.5" android:scaleX="0.88" android:scaleY="0.88">
+    <!-- chess knight (mint) at the back right -->
+    <group android:translateX="50.5" android:translateY="35.5" android:scaleX="0.4" android:scaleY="0.4">
+        <path android:fillColor="#4FB58E" android:pathData="M29,76 C28,62 38,56 43,48 C37,50 31,52 26,49 C20,46 19,41 23,37 C28,32 34,27 36,19 L40,9 L46,16 C49,14 52,13 55,14 C72,19 80,40 76,58 C74,64 73,70 72,76 Z M27,73 h46 v9 h-46 z M22,81 h56 v10 h-56 z" />
+        <group android:translateX="-2.2" android:translateY="-1.8">
+            <path android:fillColor="#8EE8C0" android:pathData="M29,76 C28,62 38,56 43,48 C37,50 31,52 26,49 C20,46 19,41 23,37 C28,32 34,27 36,19 L40,9 L46,16 C49,14 52,13 55,14 C72,19 80,40 76,58 C74,64 73,70 72,76 Z M27,73 h46 v9 h-46 z M22,81 h56 v10 h-56 z" />
+        </group>
+        <path android:fillColor="#FFFFFF" android:fillAlpha="0.55" android:pathData="M44,12 L47,17 C50,15 52,14 54,15 C50,13 47,12 44,12 Z" />
+        <path android:fillColor="#1F5F4A" android:pathData="M44,28m-3.4,0a3.4,3.4 0 1,0 6.8,0a3.4,3.4 0 1,0 -6.8,0" />
+    </group>
+    <!-- gamepad: rainbow body (bands clipped to the body shape) -->
+    <group>
+        <clip-path android:pathData="M25,45 C25,39 30,37 36,37 L52,37 C58,37 62,39 62,45 C62,53 60,62 56,66 C52,69 48,64 45,60 L39,60 C36,64 32,69 27,66 C23,62 25,53 25,45 Z" />
+        <path android:fillColor="#F2992E" android:pathData="M20,30h12v45h-12z" />
+        <path android:fillColor="#F7C23A" android:pathData="M32,30h8v45h-8z" />
+        <path android:fillColor="#7ED06A" android:pathData="M40,30h8v45h-8z" />
+        <path android:fillColor="#4FB5E8" android:pathData="M48,30h8v45h-8z" />
+        <path android:fillColor="#8C6FE0" android:pathData="M56,30h10v45h-10z" />
+        <!-- shade on the lower edge, highlight on the top edge -->
+        <path android:fillColor="#000000" android:fillAlpha="0.16" android:pathData="M20,60 C34,66 52,66 66,58 L66,75 L20,75 Z" />
+        <path android:fillColor="#FFFFFF" android:fillAlpha="0.28" android:pathData="M20,37 L66,37 L66,41 C50,39 36,39 20,41 Z" />
+    </group>
+    <!-- shoulder buttons -->
+    <path android:fillColor="#7A5CD6" android:pathData="M29,34.5 h9 a2,2 0 0 1 2,2 v1 h-13 v-1 a2,2 0 0 1 2,-2 z" />
+    <path android:fillColor="#4A9BD8" android:pathData="M48,34.5 h9 a2,2 0 0 1 2,2 v1 h-13 v-1 a2,2 0 0 1 2,-2 z" />
+    <!-- centre block, d-pad disc, button cluster, sticks -->
+    <path android:fillColor="#B9A2F5" android:pathData="M39,39 h12 a1.5,1.5 0 0 1 1.5,1.5 v3 h-15 v-3 a1.5,1.5 0 0 1 1.5,-1.5 z" />
+    <path android:fillColor="#E8586A" android:pathData="M33,47m-5.6,0a5.6,5.6 0 1,0 11.2,0a5.6,5.6 0 1,0 -11.2,0" />
+    <path android:fillColor="#2B2A6B" android:pathData="M31.6,43.6 h2.8 v2.2 h2.2 v2.8 h-2.2 v2.2 h-2.8 v-2.2 h-2.2 v-2.8 h2.2 z" />
+    <path android:fillColor="#3D86D8" android:pathData="M54,47m-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0" />
+    <path android:fillColor="#F7C23A" android:pathData="M54,43.4m-1.6,0a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0" />
+    <path android:fillColor="#E8586A" android:pathData="M57.6,47m-1.6,0a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0" />
+    <path android:fillColor="#7ED06A" android:pathData="M54,50.6m-1.6,0a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0" />
+    <path android:fillColor="#F2992E" android:pathData="M50.4,47m-1.6,0a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0" />
+    <path android:fillColor="#2B2A6B" android:pathData="M36.5,57m-3.8,0a3.8,3.8 0 1,0 7.6,0a3.8,3.8 0 1,0 -7.6,0" />
+    <path android:fillColor="#2B2A6B" android:pathData="M49.5,57m-3.8,0a3.8,3.8 0 1,0 7.6,0a3.8,3.8 0 1,0 -7.6,0" />
+    <path android:fillColor="#5A58A8" android:pathData="M36,56.4m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
+    <path android:fillColor="#5A58A8" android:pathData="M49,56.4m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" />
+    <!-- die in front -->
+    <path android:fillColor="#B8BCD0" android:pathData="M45,63 h16 a4,4 0 0 1 4,4 v12 a4,4 0 0 1 -4,4 h-16 a4,4 0 0 1 -4,-4 v-12 a4,4 0 0 1 4,-4 z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M44,62 h16 a4,4 0 0 1 4,4 v11 a4,4 0 0 1 -4,4 h-16 a4,4 0 0 1 -4,-4 v-11 a4,4 0 0 1 4,-4 z" />
+    <path android:fillColor="#2B2A4A" android:pathData="M45.5,66m-1.7,0a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0" />
+    <path android:fillColor="#2B2A4A" android:pathData="M52,71.5m-1.7,0a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0" />
+    <path android:fillColor="#2B2A4A" android:pathData="M58.5,77m-1.7,0a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0" />
+    </group>
 </vector>

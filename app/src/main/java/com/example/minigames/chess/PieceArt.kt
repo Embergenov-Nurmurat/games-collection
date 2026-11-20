@@ -5,11 +5,13 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import com.example.minigames.core.mixC
 import com.example.minigames.core.withA
 
 /**
  * Chess pieces drawn with plain paths (no fonts or images, so they look the same on every device).
- * Every piece is designed in a 100x100 box and scaled to the requested size.
+ * Soft "toy" style: a fill, a darker crescent of shade on the lower right (the same path shifted and clipped),
+ * a light highlight on the upper left and a rounded outline. Every piece is designed in a 100x100 box.
  */
 object PieceArt {
 
@@ -18,197 +20,242 @@ object PieceArt {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
-        strokeWidth = 3.4f
+        strokeWidth = 3.2f
     }
     private val path = Path()
+    private val tmp = Path()
     private val rf = RectF()
 
-    private val WHITE_FILL = Color.rgb(252, 248, 238)
-    private val WHITE_LINE = Color.rgb(70, 46, 60)
-    private val BLACK_FILL = Color.rgb(64, 58, 78)
-    private val BLACK_LINE = Color.rgb(20, 16, 26)
+    private class Pal(val fill: Int, val shade: Int, val light: Int, val line: Int, val detail: Int)
+
+    private val WHITE = Pal(
+        Color.rgb(250, 247, 240), Color.rgb(198, 190, 184), Color.WHITE, Color.rgb(78, 66, 82), Color.rgb(120, 106, 122)
+    )
+    private val BLACK = Pal(
+        Color.rgb(84, 80, 98), Color.rgb(40, 36, 50), Color.rgb(150, 146, 168), Color.rgb(22, 18, 30), Color.rgb(188, 184, 206)
+    )
+
+    private fun fade(c: Int, a: Float) = withA(c, a)
 
     /** [type] 1..6 (pawn..king). Centre of the piece is (cx, cy), [size] is the box side. */
     fun draw(c: Canvas, type: Int, white: Boolean, cx: Float, cy: Float, size: Float, alpha: Float = 1f) {
-        val fillC = withA(if (white) WHITE_FILL else BLACK_FILL, alpha)
-        val lineC = withA(if (white) WHITE_LINE else BLACK_LINE, alpha)
-        val detail = withA(if (white) WHITE_LINE else Color.rgb(205, 200, 218), alpha)
-
+        val base = if (white) WHITE else BLACK
+        val p = if (alpha >= 0.999f) base else Pal(
+            fade(base.fill, alpha), fade(base.shade, alpha), fade(base.light, alpha), fade(base.line, alpha), fade(base.detail, alpha)
+        )
         c.save()
         c.translate(cx - size / 2f, cy - size / 2f)
         val s = size / 100f
         c.scale(s, s)
 
         // soft shadow under the piece
-        fillP.shader = null
-        fillP.color = withA(Color.BLACK, 0.18f * alpha)
-        rf.set(22f, 84f, 80f, 95f)
+        fillP.color = withA(Color.BLACK, 0.20f * alpha)
+        rf.set(20f, 84f, 82f, 96f)
         c.drawOval(rf, fillP)
 
         when (type) {
-            1 -> pawn(c, fillC, lineC)
-            2 -> knight(c, fillC, lineC, detail)
-            3 -> bishop(c, fillC, lineC, detail)
-            4 -> rook(c, fillC, lineC, detail)
-            5 -> queen(c, fillC, lineC)
-            6 -> king(c, fillC, lineC)
+            1 -> pawn(c, p)
+            2 -> knight(c, p)
+            3 -> bishop(c, p)
+            4 -> rook(c, p)
+            5 -> queen(c, p)
+            6 -> king(c, p)
         }
         c.restore()
     }
 
-    private fun shape(c: Canvas, fillC: Int, lineC: Int) {
-        fillP.color = fillC
+    /** Fills [path] with shading + outline. [lightX]/[lightY]: highlight spot. */
+    private fun shape(c: Canvas, p: Pal, hl: Boolean = true) {
+        fillP.color = p.shade
         c.drawPath(path, fillP)
-        lineP.color = lineC
+        c.save()
+        c.clipPath(path)
+        c.translate(-4.5f, -3f)
+        fillP.color = p.fill
+        c.drawPath(path, fillP)
+        c.restore()
+        if (hl) {
+            // thin highlight just inside the upper left edge
+            c.save()
+            c.clipPath(path)
+            c.translate(2.2f, 2.2f)
+            lineP.color = fade(p.light, 0.9f)
+            lineP.strokeWidth = 2.2f
+            c.drawPath(path, lineP)
+            c.restore()
+        }
+        lineP.color = p.line
+        lineP.strokeWidth = 3.2f
         c.drawPath(path, lineP)
     }
 
-    private fun circle(c: Canvas, x: Float, y: Float, r: Float, fillC: Int, lineC: Int) {
-        fillP.color = fillC
-        c.drawCircle(x, y, r, fillP)
-        lineP.color = lineC
-        c.drawCircle(x, y, r, lineP)
+    private fun circleShape(c: Canvas, x: Float, y: Float, r: Float, p: Pal) {
+        path.reset()
+        rf.set(x - r, y - r, x + r, y + r)
+        path.addOval(rf, Path.Direction.CW)
+        shape(c, p)
     }
 
-    private fun base(c: Canvas, fillC: Int, lineC: Int) {
-        fillP.color = fillC
-        rf.set(24f, 79f, 76f, 91f)
-        c.drawRoundRect(rf, 5f, 5f, fillP)
-        lineP.color = lineC
-        c.drawRoundRect(rf, 5f, 5f, lineP)
+    private fun rrShape(c: Canvas, l: Float, t: Float, r: Float, b: Float, rad: Float, p: Pal) {
+        path.reset()
+        rf.set(l, t, r, b)
+        path.addRoundRect(rf, rad, rad, Path.Direction.CW)
+        shape(c, p)
     }
 
-    private fun pawn(c: Canvas, f: Int, l: Int) {
-        path.reset()
-        path.moveTo(41f, 46f)
-        path.lineTo(59f, 46f)
-        path.quadTo(62f, 64f, 70f, 80f)
-        path.lineTo(30f, 80f)
-        path.quadTo(38f, 64f, 41f, 46f)
-        path.close()
-        shape(c, f, l)
-        base(c, f, l)
-        circle(c, 50f, 31f, 13f, f, l)
+    /** Two-step plinth shared by all pieces. */
+    private fun base(c: Canvas, p: Pal) {
+        rrShape(c, 27f, 73f, 73f, 82f, 4f, p)
+        rrShape(c, 22f, 81f, 78f, 91f, 5f, p)
     }
 
-    private fun rook(c: Canvas, f: Int, l: Int, d: Int) {
+    private fun pawn(c: Canvas, p: Pal) {
         path.reset()
-        path.moveTo(33f, 40f)
-        path.lineTo(67f, 40f)
-        path.lineTo(71f, 80f)
-        path.lineTo(29f, 80f)
+        path.moveTo(43f, 46f)
+        path.lineTo(57f, 46f)
+        path.cubicTo(58f, 58f, 66f, 66f, 69f, 76f)
+        path.lineTo(31f, 76f)
+        path.cubicTo(34f, 66f, 42f, 58f, 43f, 46f)
         path.close()
-        shape(c, f, l)
-        path.reset()
-        path.moveTo(28f, 40f)
-        path.lineTo(28f, 17f)
-        path.lineTo(39f, 17f)
-        path.lineTo(39f, 26f)
-        path.lineTo(46f, 26f)
-        path.lineTo(46f, 17f)
-        path.lineTo(54f, 17f)
-        path.lineTo(54f, 26f)
-        path.lineTo(61f, 26f)
-        path.lineTo(61f, 17f)
-        path.lineTo(72f, 17f)
-        path.lineTo(72f, 40f)
-        path.close()
-        shape(c, f, l)
-        base(c, f, l)
-        lineP.color = d
-        lineP.strokeWidth = 2.2f
-        c.drawLine(36f, 54f, 64f, 54f, lineP)
-        lineP.strokeWidth = 3.4f
+        shape(c, p)
+        base(c, p)
+        rrShape(c, 36f, 42f, 64f, 50f, 4f, p)
+        circleShape(c, 50f, 30f, 13f, p)
     }
 
-    private fun knight(c: Canvas, f: Int, l: Int, d: Int) {
+    private fun rook(c: Canvas, p: Pal) {
         path.reset()
-        path.moveTo(30f, 80f)
-        path.lineTo(36f, 58f)
-        path.quadTo(22f, 56f, 19f, 46f)
-        path.lineTo(26f, 37f)
-        path.lineTo(44f, 20f)
-        path.lineTo(46f, 8f)
-        path.lineTo(55f, 18f)
-        path.quadTo(77f, 26f, 75f, 52f)
-        path.lineTo(72f, 80f)
+        path.moveTo(34f, 38f)
+        path.lineTo(66f, 38f)
+        path.cubicTo(66f, 52f, 70f, 62f, 71f, 76f)
+        path.lineTo(29f, 76f)
+        path.cubicTo(30f, 62f, 34f, 52f, 34f, 38f)
         path.close()
-        shape(c, f, l)
-        base(c, f, l)
-        fillP.color = d
-        c.drawCircle(47f, 33f, 3.4f, fillP)
-        c.drawCircle(25f, 45f, 2f, fillP)
-        lineP.color = d
-        lineP.strokeWidth = 2.2f
-        c.drawLine(56f, 28f, 66f, 50f, lineP)
-        lineP.strokeWidth = 3.4f
+        shape(c, p)
+        base(c, p)
+        // battlements
+        path.reset()
+        path.moveTo(27f, 40f)
+        path.lineTo(27f, 16f)
+        path.lineTo(38f, 16f)
+        path.lineTo(38f, 24f)
+        path.lineTo(45f, 24f)
+        path.lineTo(45f, 16f)
+        path.lineTo(55f, 16f)
+        path.lineTo(55f, 24f)
+        path.lineTo(62f, 24f)
+        path.lineTo(62f, 16f)
+        path.lineTo(73f, 16f)
+        path.lineTo(73f, 40f)
+        path.close()
+        shape(c, p)
+        lineP.color = fade(p.detail, 0.8f)
+        lineP.strokeWidth = 2f
+        c.drawLine(31f, 33f, 69f, 33f, lineP)
+        c.drawLine(38f, 52f, 62f, 52f, lineP)
     }
 
-    private fun bishop(c: Canvas, f: Int, l: Int, d: Int) {
+    private fun knight(c: Canvas, p: Pal) {
         path.reset()
-        path.moveTo(42f, 52f)
-        path.lineTo(58f, 52f)
-        path.quadTo(60f, 66f, 70f, 80f)
-        path.lineTo(30f, 80f)
-        path.quadTo(40f, 66f, 42f, 52f)
+        path.moveTo(29f, 76f)
+        path.cubicTo(28f, 62f, 38f, 56f, 43f, 48f)
+        path.cubicTo(37f, 50f, 31f, 52f, 26f, 49f)
+        path.cubicTo(20f, 46f, 19f, 41f, 23f, 37f)
+        path.cubicTo(28f, 32f, 34f, 27f, 36f, 19f)
+        path.lineTo(40f, 9f)
+        path.lineTo(46f, 16f)
+        path.cubicTo(49f, 14f, 52f, 13f, 55f, 14f)
+        path.cubicTo(72f, 19f, 80f, 40f, 76f, 58f)
+        path.cubicTo(74f, 64f, 73f, 70f, 72f, 76f)
         path.close()
-        shape(c, f, l)
-        base(c, f, l)
+        shape(c, p)
+        base(c, p)
+        // eye, nostril, mane strokes
+        fillP.color = p.line
+        c.drawCircle(44f, 28f, 3.2f, fillP)
+        c.drawCircle(23f, 42f, 1.8f, fillP)
+        lineP.color = fade(p.detail, 0.85f)
+        lineP.strokeWidth = 2.4f
+        path.reset()
+        path.moveTo(55f, 24f)
+        path.cubicTo(64f, 30f, 68f, 42f, 66f, 56f)
+        c.drawPath(path, lineP)
+        path.reset()
+        path.moveTo(51f, 36f)
+        path.cubicTo(56f, 42f, 58f, 50f, 56f, 58f)
+        c.drawPath(path, lineP)
+    }
+
+    private fun bishop(c: Canvas, p: Pal) {
+        path.reset()
+        path.moveTo(42f, 56f)
+        path.lineTo(58f, 56f)
+        path.cubicTo(58f, 64f, 65f, 70f, 69f, 76f)
+        path.lineTo(31f, 76f)
+        path.cubicTo(35f, 70f, 42f, 64f, 42f, 56f)
+        path.close()
+        shape(c, p)
+        base(c, p)
+        rrShape(c, 36f, 52f, 64f, 60f, 4f, p)
         // mitre
         path.reset()
-        rf.set(36f, 20f, 64f, 56f)
-        path.addOval(rf, Path.Direction.CW)
-        shape(c, f, l)
-        circle(c, 50f, 14f, 5.5f, f, l)
-        lineP.color = d
-        lineP.strokeWidth = 2.6f
-        c.drawLine(46f, 38f, 56f, 28f, lineP)
-        lineP.strokeWidth = 3.4f
+        path.moveTo(50f, 16f)
+        path.cubicTo(60f, 24f, 68f, 34f, 64f, 46f)
+        path.cubicTo(62f, 52f, 56f, 54f, 50f, 54f)
+        path.cubicTo(44f, 54f, 38f, 52f, 36f, 46f)
+        path.cubicTo(32f, 34f, 40f, 24f, 50f, 16f)
+        path.close()
+        shape(c, p)
+        circleShape(c, 50f, 12f, 5.2f, p)
+        lineP.color = p.detail
+        lineP.strokeWidth = 3f
+        c.drawLine(46f, 40f, 57f, 28f, lineP)
     }
 
-    private fun queen(c: Canvas, f: Int, l: Int) {
+    private fun queen(c: Canvas, p: Pal) {
         path.reset()
-        path.moveTo(30f, 80f)
-        path.lineTo(24f, 34f)
-        path.lineTo(38f, 54f)
+        path.moveTo(31f, 76f)
+        path.lineTo(26f, 32f)
+        path.lineTo(38f, 50f)
         path.lineTo(42f, 24f)
-        path.lineTo(50f, 52f)
+        path.lineTo(50f, 48f)
         path.lineTo(58f, 24f)
-        path.lineTo(62f, 54f)
-        path.lineTo(76f, 34f)
-        path.lineTo(70f, 80f)
+        path.lineTo(62f, 50f)
+        path.lineTo(74f, 32f)
+        path.lineTo(69f, 76f)
         path.close()
-        shape(c, f, l)
-        base(c, f, l)
-        circle(c, 24f, 30f, 5f, f, l)
-        circle(c, 42f, 19f, 5f, f, l)
-        circle(c, 58f, 19f, 5f, f, l)
-        circle(c, 76f, 30f, 5f, f, l)
+        shape(c, p)
+        base(c, p)
+        rrShape(c, 34f, 62f, 66f, 71f, 4f, p)
+        circleShape(c, 26f, 28f, 5f, p)
+        circleShape(c, 42f, 19f, 5f, p)
+        circleShape(c, 58f, 19f, 5f, p)
+        circleShape(c, 74f, 28f, 5f, p)
     }
 
-    private fun king(c: Canvas, f: Int, l: Int) {
+    private fun king(c: Canvas, p: Pal) {
         path.reset()
-        path.moveTo(32f, 80f)
-        path.lineTo(35f, 48f)
-        path.quadTo(50f, 36f, 65f, 48f)
-        path.lineTo(68f, 80f)
+        path.moveTo(32f, 76f)
+        path.cubicTo(32f, 62f, 32f, 54f, 34f, 46f)
+        path.cubicTo(42f, 38f, 58f, 38f, 66f, 46f)
+        path.cubicTo(68f, 54f, 68f, 62f, 68f, 76f)
         path.close()
-        shape(c, f, l)
-        base(c, f, l)
-        // crown dome
+        shape(c, p)
+        base(c, p)
+        rrShape(c, 33f, 62f, 67f, 71f, 4f, p)
+        // crown
         path.reset()
-        path.moveTo(34f, 48f)
-        path.quadTo(50f, 26f, 66f, 48f)
+        path.moveTo(31f, 46f)
+        path.cubicTo(30f, 34f, 40f, 28f, 50f, 28f)
+        path.cubicTo(60f, 28f, 70f, 34f, 69f, 46f)
         path.close()
-        shape(c, f, l)
+        shape(c, p)
         // cross
         path.reset()
-        rf.set(46f, 8f, 54f, 36f)
-        path.addRoundRect(rf, 2f, 2f, Path.Direction.CW)
-        shape(c, f, l)
-        path.reset()
-        rf.set(38f, 15f, 62f, 23f)
-        path.addRoundRect(rf, 2f, 2f, Path.Direction.CW)
-        shape(c, f, l)
+        path.moveTo(46f, 28f); path.lineTo(46f, 21f); path.lineTo(40f, 21f); path.lineTo(40f, 14f)
+        path.lineTo(46f, 14f); path.lineTo(46f, 8f); path.lineTo(54f, 8f); path.lineTo(54f, 14f)
+        path.lineTo(60f, 14f); path.lineTo(60f, 21f); path.lineTo(54f, 21f); path.lineTo(54f, 28f)
+        path.close()
+        shape(c, p)
     }
 }

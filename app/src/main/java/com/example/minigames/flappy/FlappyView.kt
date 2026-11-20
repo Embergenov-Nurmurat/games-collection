@@ -8,6 +8,7 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.view.KeyEvent
+import com.example.minigames.core.Achievements
 import com.example.minigames.core.BaseView
 import com.example.minigames.core.Button
 import com.example.minigames.core.GameId
@@ -54,7 +55,7 @@ private fun circleHitsRect(
     return dx * dx + dy * dy < r * r
 }
 
-/** Flappy Bird: its own menu, settings (theme, shields), skins and records. */
+/** Flappy Bird: its own menu, settings (scene, theme, shields), skins, records and the daily challenge. */
 class FlappyView(context: Context, host: Host) : BaseView(context, host) {
 
     private enum class State { MENU, SETTINGS, READY, PLAYING, PAUSED, COUNTDOWN, DYING, GAME_OVER }
@@ -91,10 +92,15 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
     private var invuln = 0
     private var unlockedSkin: Skin? = null
 
+    // daily challenge: the same pipes for everybody on a given day (seeded by the date)
+    private var daily = false
+    private var gen: Random = Random.Default
+
     // persistent stats (cached so we do not hit SharedPreferences every frame)
     private val skins = Skin.values()
     private var maxBest = diffs.maxOf { bestOf(it) }
     private var totalCoins = store.totalCoins
+    private var maxStreak = store.getI("flappy_dly_max", 0)
     private var skinIdx = 0
 
     // fx
@@ -116,6 +122,59 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
     // settings
     private val shieldsOn: Boolean get() = store.getB("flappy_shields", false)
     private var themeOpt = store.getI("flappy_theme", 0).coerceIn(0, 2)
+    private val scenes = Scene.values()
+    private var sceneOpt = store.getI("flappy_scene", 0).coerceIn(0, scenes.size - 1)
+
+    /** The scene of the daily challenge changes with the date; otherwise the chosen one. */
+    private val curScene: Scene
+        get() = if (daily) scenes[Math.floorMod(FlappyClock.dayNumber() / 3, scenes.size)] else scenes[sceneOpt]
+
+    // ---- daily challenge: records and streak ----
+
+    private fun dayNum(): Int = FlappyClock.dayNumber()
+
+    private fun dailyDifficulty(): Difficulty = diffs[Math.floorMod(dayNum(), diffs.size)]
+
+    private fun dailySeed(): Long = dayNum() * 7919L + 104729L
+
+    private fun playedToday(): Boolean = store.getI("flappy_dly_last", -1) == dayNum()
+
+    private fun dailyBest(): Int = if (store.getI("flappy_dly_day", -1) == dayNum()) store.getI("flappy_dly_best", 0) else 0
+
+    /** Days in a row with a daily run (0 when yesterday was skipped). */
+    private fun dailyStreak(): Int {
+        val last = store.getI("flappy_dly_last", -1)
+        return if (last == dayNum() || last == dayNum() - 1) store.getI("flappy_dly_streak", 0) else 0
+    }
+
+    private fun recordDaily(sc: Int) {
+        val d = dayNum()
+        if (store.getI("flappy_dly_day", -1) != d) {
+            store.putI("flappy_dly_day", d)
+            store.putI("flappy_dly_best", 0)
+        }
+        if (sc > store.getI("flappy_dly_best", 0)) store.putI("flappy_dly_best", sc)
+        val last = store.getI("flappy_dly_last", -1)
+        if (last != d) {
+            val streak = if (last == d - 1) store.getI("flappy_dly_streak", 0) + 1 else 1
+            store.putI("flappy_dly_streak", streak)
+            store.putI("flappy_dly_last", d)
+            if (streak > maxStreak) {
+                maxStreak = streak
+                store.putI("flappy_dly_max", streak)
+            }
+        }
+    }
+
+    private fun dailyLine(): String = t("fl_daily_line", t(difficulty.key), dailyStreak())
+
+    private fun checkAchievements() {
+        if (score >= 10) Achievements.unlock(store, "flappy_10")
+        if (score >= 25) Achievements.unlock(store, "flappy_25")
+        if (score >= 50) Achievements.unlock(store, "flappy_50")
+        if (daily && score >= 5) Achievements.unlock(store, "flappy_daily")
+        if (store.totalCoins + coins >= 100) Achievements.unlock(store, "flappy_coins")
+    }
 
     private fun themeLabel(): String = when (themeOpt) {
         1 -> t("theme_day")
@@ -126,19 +185,24 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
     // ------------------------------- buttons --------------------------------
 
     private val menuButtons: List<Button> = listOf(
-        btn({ t("play") }, W / 2f, 330f, 260f, 50f) { transition { startReady() } },
-        btn({ t("mode_x", t(difficulty.key)) }, W / 2f, 390f, 260f, 50f, style = { 1 }) { cycleDifficulty() },
-        btn({ t("skin_x", t(skins[skinIdx].key)) }, W / 2f, 450f, 260f, 50f, style = { 2 }) { cycleSkin() },
-        btn({ t("settings") }, W / 2f, 510f, 260f, 50f, style = { 1 }) { state = State.SETTINGS },
-        btn({ t("all_games") }, W / 2f, 570f, 260f, 46f, style = { 1 }) { leaveTo(GameId.HUB) }
+        btn({ t("play") }, W / 2f, 318f, 260f, 48f) { transition { daily = false; startReady() } },
+        btn(
+            { if (playedToday()) t("fl_daily_best", dailyBest()) else t("fl_daily") },
+            W / 2f, 372f, 260f, 48f, style = { if (playedToday()) 1 else 2 }
+        ) { transition { startDaily() } },
+        btn({ t("mode_x", t(difficulty.key)) }, W / 2f, 426f, 260f, 48f, style = { 1 }) { cycleDifficulty() },
+        btn({ t("skin_x", t(skins[skinIdx].key)) }, W / 2f, 480f, 260f, 48f, style = { 2 }) { cycleSkin() },
+        btn({ t("settings") }, W / 2f, 534f, 260f, 48f, style = { 1 }) { state = State.SETTINGS },
+        btn({ t("all_games") }, W / 2f, 588f, 260f, 46f, style = { 1 }) { leaveTo(GameId.HUB) }
     )
     private val settingsButtons: List<Button> = listOf(
-        btn({ t("theme_x", themeLabel()) }, W / 2f, 290f, 320f, 54f, style = { 1 }) { cycleTheme() },
+        btn({ t("fl_scene_x", t(scenes[sceneOpt].key)) }, W / 2f, 270f, 320f, 52f, style = { 1 }) { cycleScene() },
+        btn({ t("theme_x", themeLabel()) }, W / 2f, 330f, 320f, 52f, style = { 1 }) { cycleTheme() },
         btn(
-            { t("shields_x", if (shieldsOn) t("on") else t("off")) }, W / 2f, 360f, 320f, 54f,
+            { t("shields_x", if (shieldsOn) t("on") else t("off")) }, W / 2f, 390f, 320f, 52f,
             style = { if (shieldsOn) 2 else 3 }
         ) { store.putB("flappy_shields", !shieldsOn) },
-        btn({ t("back") }, W / 2f, 450f, 220f, 50f) { state = State.MENU }
+        btn({ t("back") }, W / 2f, 476f, 220f, 48f) { state = State.MENU }
     )
     private val overButtons: List<Button> = listOf(
         btn({ t("retry") }, 150f, 545f, 170f, 56f) { transition { startReady() } },
@@ -214,12 +278,21 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
         goTimer = 0
         cdTimer = 0
         scorePop = 0f
-        best = bestOf(difficulty)
+        best = if (daily) dailyBest() else bestOf(difficulty)
+        gen = if (daily) Random(dailySeed()) else Random.Default
     }
 
     private fun startMenu() {
+        daily = false
+        difficulty = diffs[store.getI("flappy_diff", 1).coerceIn(0, diffs.size - 1)]
         resetWorld()
         state = State.MENU
+    }
+
+    private fun startDaily() {
+        daily = true
+        difficulty = dailyDifficulty()
+        startReady()
     }
 
     private fun startReady() {
@@ -238,12 +311,20 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
         best = bestOf(difficulty)
     }
 
+    private fun cycleScene() {
+        sceneOpt = (sceneOpt + 1) % scenes.size
+        store.putI("flappy_scene", sceneOpt)
+    }
+
     private fun cycleTheme() {
         themeOpt = (themeOpt + 1) % 3
         store.putI("flappy_theme", themeOpt)
     }
 
-    private fun skinUnlocked(i: Int) = skins[i].unlockAt <= maxBest
+    private fun skinUnlocked(i: Int): Boolean {
+        val s = skins[i]
+        return maxBest >= s.unlockAt && totalCoins >= s.coinsAt && maxStreak >= s.dailyAt
+    }
 
     private fun cycleSkin() {
         for (i in 1..skins.size) {
@@ -296,6 +377,7 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
             coins++
             score = passed + coins
             scorePop = 1f
+            checkAchievements()
             sfx.play(Sfx.Kind.COIN)
             emit(x, y, 10, 1f, 3f, 24, 3f, 5f, 0f, GOLD, Color.WHITE)
         } else {
@@ -331,7 +413,9 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
 
     /** Saves the best score and coins of an unfinished run (used when leaving from the pause menu). */
     private fun bankProgress() {
-        if (score > best) {
+        if (daily) {
+            if (score > 0 || passed > 0) recordDaily(score)
+        } else if (score > best) {
             best = score
             store.putI("flappy_best_" + difficulty.name, best)
         }
@@ -344,35 +428,41 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
     private fun endGame() {
         state = State.GAME_OVER
         goTimer = 0
-        val before = maxBest
+        val before = BooleanArray(skins.size) { skinUnlocked(it) }
         if (score > best) {
             best = score
             newBest = true
-            store.putI("flappy_best_" + difficulty.name, best)
+            if (!daily) store.putI("flappy_best_" + difficulty.name, best)
         }
+        if (daily) recordDaily(score)     // best of the day + the day counts for the streak
         if (coins > 0) store.totalCoins = store.totalCoins + coins
         totalCoins = store.totalCoins
         maxBest = diffs.maxOf { bestOf(it) }
-        unlockedSkin = skins.lastOrNull { it.unlockAt > before && it.unlockAt <= maxBest }
+        unlockedSkin = skins.indices.lastOrNull { !before[it] && skinUnlocked(it) }?.let { skins[it] }
+        checkAchievements()
     }
 
     private fun addPipe() {
         val gap = difficulty.gap
         val lo = 80f
         val hi = GROUND_Y - gap - 80f
-        val moving = passed >= difficulty.movingFrom && Random.nextFloat() < 0.6f
+        // every random number is drawn on every call, so that the daily sequence never depends on the player
+        val rMove = gen.nextFloat()
+        val rTop = gen.nextFloat()
+        val rPhase = gen.nextFloat()
+        val roll = gen.nextFloat()
+        val moving = passed >= difficulty.movingFrom && rMove < 0.6f
         val amp = if (moving) 28f + min(passed, 40) * 0.5f else 0f
         val prev = if (pipes.isEmpty()) (lo + hi) / 2f else pipes[pipes.size - 1].baseTop
         val minTop = max(lo + amp, prev - difficulty.maxShift)
         val maxTop = min(hi - amp, prev + difficulty.maxShift)
-        val top = if (maxTop > minTop) rnd(minTop, maxTop) else clampF(prev, lo + amp, hi - amp)
-        val roll = Random.nextFloat()
+        val top = if (maxTop > minTop) minTop + rTop * (maxTop - minTop) else clampF(prev, lo + amp, hi - amp)
         val item = when {
-            roll < 0.08f && passed >= 3 && !shield && shieldsOn -> 2
+            roll < 0.08f && passed >= 3 && !shield && shieldsOn && !daily -> 2
             roll < 0.40f -> 1
             else -> 0
         }
-        pipes.add(Pipe(vr + 20f, top, amp, rnd(0f, 6.28f), item))
+        pipes.add(Pipe(vr + 20f, top, amp, rPhase * 6.28f, item))
     }
 
     private fun hitsPipe(p: Pipe): Boolean {
@@ -513,6 +603,7 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
                 passed++
                 score = passed + coins
                 scorePop = 1f
+                checkAchievements()
                 sfx.play(Sfx.Kind.SCORE)
                 sparkle()
             }
@@ -541,20 +632,21 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
     // ------------------------------- drawing --------------------------------
 
     private fun ensureShaders() {
-        val key = (nightMix * 40f).roundToInt()
+        val sc = curScene
+        val key = (nightMix * 40f).roundToInt() + sc.ordinal * 1000
         if (key == shaderKey) return
         shaderKey = key
-        val nm = key / 40f
+        val nm = (key % 1000) / 40f
         skyShader = LinearGradient(
             0f, 0f, 0f, GROUND_Y,
-            mixC(Color.rgb(100, 166, 212), Color.rgb(11, 16, 38), nm),
-            mixC(Color.rgb(228, 237, 245), Color.rgb(40, 54, 104), nm),
+            mixC(sc.skyTop, Color.rgb(11, 16, 38), nm),
+            mixC(sc.skyBottom, Color.rgb(40, 54, 104), nm),
             Shader.TileMode.CLAMP
         )
         groundShader = LinearGradient(
             0f, GROUND_Y, 0f, H,
-            mixC(Color.rgb(206, 198, 178), Color.rgb(76, 74, 104), nm * 0.7f),
-            mixC(Color.rgb(188, 180, 160), Color.rgb(52, 50, 82), nm * 0.7f),
+            mixC(sc.groundTop, Color.rgb(76, 74, 104), nm * 0.7f),
+            mixC(sc.groundBottom, Color.rgb(52, 50, 82), nm * 0.7f),
             Shader.TileMode.CLAMP
         )
         sunGlow = RadialGradient(
@@ -576,8 +668,10 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
         val nm = nightMix
         drawSky(c)
         for (cl in clouds) drawCloud(c, cl, nm)
-        drawHills(c, hill1, GROUND_Y - 70f, 22f, 0.011f, mixC(Color.rgb(172, 204, 204), Color.rgb(32, 54, 88), nm))
-        drawHills(c, hill2, GROUND_Y - 32f, 16f, 0.02f, mixC(Color.rgb(138, 180, 178), Color.rgb(24, 44, 72), nm))
+        val sc = curScene
+        drawHills(c, hill1, GROUND_Y - 70f, 22f, 0.011f, mixC(sc.hillFar, Color.rgb(32, 54, 88), nm))
+        drawHills(c, hill2, GROUND_Y - 32f, 16f, 0.02f, mixC(sc.hillNear, Color.rgb(24, 44, 72), nm))
+        if (sc.snow) drawSnow(c)
         drawPipes(c)
         drawGround(c)
         drawParticles(c)
@@ -626,6 +720,17 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
         }
     }
 
+    /** Falling snow (WINTER): position is a function of the frame counter, nothing is stored. */
+    private fun drawSnow(c: Canvas) {
+        val span = GROUND_Y - vt
+        for (s in stars) {
+            val x = s.x + sin(tick * 0.02f + s.phase) * 12f
+            val y = vt + (s.y - vt + tick * (0.45f + s.size * 0.18f)) % span
+            val r = s.size * 0.45f
+            fillOval(c, x - r, y - r, x + r, y + r, withA(Color.WHITE, 0.85f))
+        }
+    }
+
     private fun drawHills(c: Canvas, offset: Float, base: Float, amp: Float, freq: Float, color: Int) {
         path.reset()
         path.moveTo(vl - 10f, GROUND_Y + 5f)
@@ -644,8 +749,9 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
 
     private fun drawPipes(c: Canvas) {
         val nm = nightMix
-        val light = mixC(Color.rgb(120, 200, 164), Color.rgb(70, 120, 100), nm * 0.8f)
-        val dark = mixC(Color.rgb(72, 152, 122), Color.rgb(40, 84, 76), nm * 0.8f)
+        val sc = curScene
+        val light = mixC(sc.pipeLight, Color.rgb(70, 120, 100), nm * 0.8f)
+        val dark = mixC(sc.pipeDark, Color.rgb(40, 84, 76), nm * 0.8f)
         val mLight = mixC(Color.rgb(136, 176, 236), Color.rgb(60, 110, 130), nm * 0.8f)
         val mDark = mixC(Color.rgb(90, 128, 200), Color.rgb(36, 76, 100), nm * 0.8f)
         val top = vt - 20f
@@ -711,7 +817,7 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
         }
 
         // thin edge line on top of the ground
-        fillRect(c, vl - 60f, gy, vr + 60f, gy + 5f, mixC(Color.rgb(134, 170, 150), Color.rgb(50, 110, 70), nm))
+        fillRect(c, vl - 60f, gy, vr + 60f, gy + 5f, mixC(curScene.groundEdge, Color.rgb(50, 110, 70), nm))
     }
 
     // --- bird ---
@@ -803,7 +909,15 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
     }
 
     private fun nextSkinHint(): String {
-        for (s in skins) if (s.unlockAt > maxBest) return t("next_skin", s.unlockAt)
+        for (i in skins.indices) {
+            if (skinUnlocked(i)) continue
+            val s = skins[i]
+            return when {
+                s.unlockAt > maxBest -> t("next_skin", s.unlockAt)
+                s.coinsAt > totalCoins -> t("fl_next_coins", s.coinsAt)
+                else -> t("fl_next_daily", s.dailyAt)
+            }
+        }
         return t("all_skins")
     }
 
@@ -820,7 +934,7 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
             State.SETTINGS -> {
                 text(c, t("settings"), W / 2f, 130f, 42f, Color.WHITE, maxW = 400f)
                 for (b in settingsButtons) drawButton(c, b)
-                text(c, t("shields_hint"), W / 2f, 505f, 14f, Color.rgb(78, 88, 108), maxW = 440f, shadow = false)
+                text(c, t("shields_hint"), W / 2f, 428f, 14f, Color.rgb(78, 88, 108), maxW = 440f, shadow = false)
             }
             State.READY -> {
                 drawScore(c)
@@ -830,7 +944,7 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
                 c.scale(pulse, pulse)
                 text(c, t("get_ready"), 0f, 0f, 44f, Color.WHITE, maxW = 420f)
                 c.restore()
-                text(c, t("mode_x", t(difficulty.key)), W / 2f, 262f, 16f, Color.WHITE, maxW = 400f)
+                text(c, if (daily) dailyLine() else t("mode_x", t(difficulty.key)), W / 2f, 262f, 16f, Color.WHITE, maxW = 420f)
                 val a = 0.55f + 0.45f * sin(tm * 0.1f)
                 c.saveLayerAlpha(vl, vt, vr, vb, (a * 255f).roundToInt())
                 text(c, t("tap_to_flap"), W / 2f, 480f, 20f, Color.WHITE, maxW = 420f)
@@ -922,7 +1036,7 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
         drawPanel(c, 60f, panelY, 420f, panelY + 300f)
 
         val labelColor = Ui.MUTED
-        plainText(c, t("mode_x", t(difficulty.key)), W / 2f, panelY + 38f, 14f, Ui.MUTED, 0, 300f)
+        plainText(c, if (daily) dailyLine() else t("mode_x", t(difficulty.key)), W / 2f, panelY + 38f, 14f, Ui.MUTED, 0, 320f)
         plainText(c, t("medal"), 135f, panelY + 66f, 13f, labelColor, 0, 100f)
         plainText(c, t("score"), 305f, panelY + 66f, 13f, labelColor, 0, 100f)
         plainText(c, t("best"), 305f, panelY + 176f, 13f, labelColor, 0, 100f)
@@ -950,7 +1064,10 @@ class FlappyView(context: Context, host: Host) : BaseView(context, host) {
 
         val sk = unlockedSkin
         if (sk != null && done) {
-            text(c, t("new_skin_x", t(sk.key)), W / 2f, 500f, 20f, Color.rgb(255, 230, 90), 5f, maxW = 440f)
+            val msg = t("new_skin_x", t(sk.key))
+            val pw = min(textW(msg, 20f) + 40f, 456f)
+            fillRRect(c, W / 2f - pw / 2f, 478f, W / 2f + pw / 2f, 516f, 18f, withA(Color.BLACK, 0.6f))
+            text(c, msg, W / 2f, 505f, 20f, Color.rgb(255, 230, 90), 5f, maxW = 430f)
         }
 
         val appear = clampF((goTimer - 45) / 15f, 0f, 1f)

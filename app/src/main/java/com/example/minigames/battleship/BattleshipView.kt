@@ -579,6 +579,9 @@ class BattleshipView(context: Context, host: Host) : BaseView(context, host) {
         }
     }
 
+    private val hullPath = android.graphics.Path()
+
+    /** A ship seen from above: pointed bow, lighter deck, cabin, funnel and guns depending on its length. */
     private fun drawHull(
         c: Canvas, len: Int, horiz: Boolean, r: Int, col: Int, l: Float, tp: Float, cs: Float,
         fillC: Int, strokeC: Int
@@ -588,18 +591,71 @@ class BattleshipView(context: Context, host: Host) : BaseView(context, host) {
         val y0 = tp + r * cs + inset
         val w = (if (horiz) len * cs else cs) - 2f * inset
         val h = (if (horiz) cs else len * cs) - 2f * inset
-        val rad = cs * 0.42f
-        fillRRect(c, x0, y0, x0 + w, y0 + h, rad, fillC)
-        if (cs >= 30f) {
-            // faint dividers between the segments
-            line.color = withA(Ui.INK, 0.22f)
-            line.strokeWidth = 1.2f
-            for (k in 1 until len) {
-                if (horiz) c.drawLine(l + (col + k) * cs, y0 + 5f, l + (col + k) * cs, y0 + h - 5f, line)
-                else c.drawLine(x0 + 5f, tp + (r + k) * cs, x0 + w - 5f, tp + (r + k) * cs, line)
+        val ln = if (horiz) w else h          // length of the ship
+        val bm = if (horiz) h else w          // beam
+        val alpha = Color.alpha(fillC) / 255f
+        val deck = withA(mixC(fillC or (0xFF shl 24), Color.WHITE, 0.34f), alpha)
+        val hullDark = withA(mixC(fillC or (0xFF shl 24), Color.BLACK, 0.28f), alpha)
+        val detail = withA(mixC(fillC or (0xFF shl 24), Color.WHITE, 0.62f), alpha)
+
+        c.save()
+        c.translate(x0 + w / 2f, y0 + h / 2f)
+        if (!horiz) c.rotate(90f)
+        val hl = ln / 2f
+        val hb = bm / 2f
+        val tip = min(bm * 0.95f, ln * 0.55f)
+        val round = bm * 0.28f
+
+        hullPath.reset()
+        hullPath.moveTo(-hl + round, -hb)
+        hullPath.lineTo(hl - tip, -hb)
+        hullPath.quadTo(hl - tip * 0.25f, -hb, hl, 0f)
+        hullPath.quadTo(hl - tip * 0.25f, hb, hl - tip, hb)
+        hullPath.lineTo(-hl + round, hb)
+        hullPath.quadTo(-hl, hb, -hl, hb - round)
+        hullPath.lineTo(-hl, -hb + round)
+        hullPath.quadTo(-hl, -hb, -hl + round, -hb)
+        hullPath.close()
+        fill.color = hullDark
+        c.drawPath(hullPath, fill)
+        // lighter deck: the same shape, smaller, shifted a little to the bow
+        c.save()
+        c.translate(bm * 0.02f, -bm * 0.04f)
+        c.scale((ln - bm * 0.30f) / ln, 0.74f)
+        fill.color = fillC
+        c.drawPath(hullPath, fill)
+        c.restore()
+
+        if (cs >= 20f) {
+            // superstructure: cabin, funnel, guns (positions scale with the length)
+            val u = bm
+            val cabinL = -hl + ln * 0.30f
+            val cabinW = if (len == 1) u * 0.5f else u * 0.62f
+            fillRRect(c, cabinL, -u * 0.2f, cabinL + cabinW, u * 0.2f, u * 0.08f, deck)
+            if (len >= 2) fillRRect(c, cabinL + cabinW * 0.28f, -u * 0.12f, cabinL + cabinW * 0.72f, u * 0.12f, u * 0.05f, detail)
+            if (len >= 3) {
+                val fx = cabinL + cabinW + u * 0.22f
+                fillOval(c, fx - u * 0.14f, -u * 0.14f, fx + u * 0.14f, u * 0.14f, deck)
+                fillOval(c, fx - u * 0.07f, -u * 0.07f, fx + u * 0.07f, u * 0.07f, hullDark)
+            }
+            if (len >= 4 || len == 2) {
+                val gx = hl - tip - u * 0.1f
+                fillOval(c, gx - u * 0.17f, -u * 0.17f, gx + u * 0.17f, u * 0.17f, deck)
+                line.color = deck
+                line.strokeWidth = max(1.6f, u * 0.09f)
+                c.drawLine(gx, 0f, gx + u * 0.38f, 0f, line)
+            }
+            if (len >= 3) {
+                val gx = -hl + ln * 0.12f
+                fillOval(c, gx - u * 0.13f, -u * 0.13f, gx + u * 0.13f, u * 0.13f, deck)
             }
         }
-        if (strokeC != 0) strokeRRect(c, x0, y0, x0 + w, y0 + h, rad, strokeC, if (cs >= 30f) 2f else 1.2f)
+        if (strokeC != 0) {
+            line.color = strokeC
+            line.strokeWidth = if (cs >= 30f) 2f else 1.2f
+            c.drawPath(hullPath, line)
+        }
+        c.restore()
     }
 
     /**

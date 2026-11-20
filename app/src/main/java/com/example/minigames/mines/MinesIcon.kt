@@ -2,44 +2,30 @@ package com.example.minigames.mines
 
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.RectF
-import com.example.minigames.core.Ui
+import com.example.minigames.core.Clay
 
-/** Hub icon: a coral plate with a mine (a dark ball with spikes and a small highlight), flat, text-free, about 64x64. */
+/** Hub icon: a spiky dark mine with a lit fuse on a dark tile (about 64x64). */
 object MinesIcon {
     /** Accent colour of the game (coral). */
     val ACCENT: Int = Color.rgb(242, 112, 96)
 
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-    }
-    private val rf = RectF()
-
     fun draw(c: Canvas, cx: Float, cy: Float, accent: Int) {
-        val half = 29f
-        rf.set(cx - half, cy - half, cx + half, cy + half)
-        fill.color = accent
-        c.drawRoundRect(rf, 10f, 10f, fill)
-
-        // spikes
-        stroke.color = Ui.INK
-        stroke.strokeWidth = 3.4f
-        val r1 = 9.5f
-        val r2 = 18f
+        Clay.tile(c, cx, cy, accent)
+        val x = cx - 1f
+        val y = cy + 3f
+        val spike = Color.rgb(96, 104, 138)
         for (k in 0 until 8) {
-            val a = k * Math.PI.toFloat() / 4f
-            val ca = Math.cos(a.toDouble()).toFloat()
-            val sa = Math.sin(a.toDouble()).toFloat()
-            c.drawLine(cx + ca * r1, cy + sa * r1, cx + ca * r2, cy + sa * r2, stroke)
+            val a = Math.toRadians(k * 45.0)
+            val dx = Math.cos(a).toFloat()
+            val dy = Math.sin(a).toFloat()
+            Clay.bar(c, x + dx * 11f, y + dy * 11f, x + dx * 19f, y + dy * 19f, 5.4f, spike)
         }
-        // ball
-        fill.color = Ui.INK
-        c.drawCircle(cx, cy, 12.5f, fill)
-        // highlight
-        fill.color = Color.argb(235, 255, 255, 255)
-        c.drawCircle(cx - 4.5f, cy - 4.5f, 3.2f, fill)
+        Clay.ball(c, x, y, 14.5f, Color.rgb(74, 84, 124))
+        // fuse and spark
+        Clay.bar(c, x + 8f, y - 12f, x + 14f, y - 20f, 3.6f, Color.rgb(230, 196, 140))
+        Clay.dot(c, x + 16f, y - 22f, 6f, withRed())
+        Clay.ball(c, x + 16f, y - 22f, 3.6f, Color.rgb(255, 214, 70))
     }
+
+    private fun withRed() = Color.argb(150, 255, 90, 70)
 }

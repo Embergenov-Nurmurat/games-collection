@@ -15,6 +15,7 @@ import com.example.minigames.core.BaseView
 import com.example.minigames.core.GameId
 import com.example.minigames.core.Host
 import com.example.minigames.core.I18n
+import com.example.minigames.core.MusicPlayer
 import com.example.minigames.core.Sfx
 import com.example.minigames.core.Store
 import com.example.minigames.core.Ui
@@ -34,6 +35,7 @@ class MainActivity : Activity(), Host {
     override lateinit var store: Store
     override lateinit var sfx: Sfx
 
+    private lateinit var music: MusicPlayer
     private var current: BaseView? = null
     private var resumed = false
 
@@ -55,6 +57,8 @@ class MainActivity : Activity(), Host {
         applyTheme()
         sfx = Sfx(this)
         sfx.enabled = store.soundOn
+        music = MusicPlayer(this)
+        music.setEnabled(store.musicOn)
 
         show(GameId.HUB)
         hideSystemUi()
@@ -112,7 +116,7 @@ class MainActivity : Activity(), Host {
     }
 
     override fun updateMusic() {
-        // filled in by the music player
+        music.setEnabled(store.musicOn)
     }
 
     // ------------------------------ lifecycle -------------------------------
@@ -120,12 +124,14 @@ class MainActivity : Activity(), Host {
     override fun onResume() {
         super.onResume()
         resumed = true
+        music.onResume()
         hideSystemUi()
         current?.onHostResume()
     }
 
     override fun onPause() {
         resumed = false
+        music.onPause()
         current?.onHostPause()
         super.onPause()
     }
@@ -133,6 +139,7 @@ class MainActivity : Activity(), Host {
     override fun onDestroy() {
         current?.stop()
         sfx.release()
+        music.release()
         super.onDestroy()
     }
 

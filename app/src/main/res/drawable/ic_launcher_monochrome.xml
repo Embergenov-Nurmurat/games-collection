@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed icon (Android 13+): one-colour silhouette of gamepad, die and knight; the system tints it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="6.5" android:translateY="6.5" android:scaleX="0.88" android:scaleY="0.88">
+    <group android:translateX="50.5" android:translateY="35.5" android:scaleX="0.4" android:scaleY="0.4">
+        <path android:fillColor="#FF000000" android:pathData="M29,76 C28,62 38,56 43,48 C37,50 31,52 26,49 C20,46 19,41 23,37 C28,32 34,27 36,19 L40,9 L46,16 C49,14 52,13 55,14 C72,19 80,40 76,58 C74,64 73,70 72,76 Z M27,73 h46 v9 h-46 z M22,81 h56 v10 h-56 z" />
+    </group>
+    <path android:fillColor="#FF000000" android:pathData="M25,45 C25,39 30,37 36,37 L52,37 C58,37 62,39 62,45 C62,53 60,62 56,66 C52,69 48,64 45,60 L39,60 C36,64 32,69 27,66 C23,62 25,53 25,45 Z" />
+    <path android:fillColor="#FF000000" android:fillType="evenOdd" android:pathData="M44,62 h16 a4,4 0 0 1 4,4 v11 a4,4 0 0 1 -4,4 h-16 a4,4 0 0 1 -4,-4 v-11 a4,4 0 0 1 4,-4 z M45.5,66m-1.7,0a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0 M52,71.5m-1.7,0a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0 M58.5,77m-1.7,0a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0" />
+    </group>
+</vector>

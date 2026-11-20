@@ -6,11 +6,13 @@ import android.graphics.Color
 import com.example.minigames.backgammon.BackgammonIcon
 import com.example.minigames.battleship.BattleshipIcon
 import com.example.minigames.c4.C4Icon
-import com.example.minigames.chess.KNIGHT
+import com.example.minigames.chess.ChessIcon
+import com.example.minigames.checkers.CheckersIcon
+import com.example.minigames.flappy.FlappyIcon
+import com.example.minigames.tictactoe.TttIcon
 import com.example.minigames.g2048.G2048Icon
 import com.example.minigames.sudoku.SudokuIcon
 import com.example.minigames.mines.MinesIcon
-import com.example.minigames.chess.PieceArt
 import com.example.minigames.core.Achievements
 import com.example.minigames.core.BaseView
 import com.example.minigames.core.Button
@@ -307,16 +309,15 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
         strokeRRect(c, l, tp, r, bt, 18f, mixC(Ui.BORDER, card.accent, 0.35f + 0.65f * press), 1.5f)
 
         // icon medallion
-        val ix = l + 38f
-        fillOval(c, ix - 24f, -24f, ix + 24f, 24f, withA(card.accent, 0.14f))
+        val ix = l + 40f
         c.save()
         c.translate(ix, 0f)
-        c.scale(0.64f, 0.64f)
+        c.scale(1.0f, 1.0f)
         drawIcon(c, card.id, card.accent, 0f, 0f)
         c.restore()
 
         // texts (left aligned)
-        val left = l + 70f
+        val left = l + 78f
         val maxText = r - 10f - left
         val title = t(card.titleKey)
         val tw = min(textW(title, 17f), maxText)
@@ -327,44 +328,16 @@ class HubView(context: Context, host: Host) : BaseView(context, host) {
 
     private fun drawIcon(c: Canvas, id: GameId, col: Int, x: Float, y: Float) {
         when (id) {
-            GameId.FLAPPY -> {
-                // minimal bird: round body, wing, beak, eye
-                fillOval(c, x - 17f, y - 15f, x + 15f, y + 15f, col)
-                fillOval(c, x - 14f, y - 2f, x + 2f, y + 9f, withA(Color.WHITE, 0.55f))
-                path.reset()
-                path.moveTo(x + 13f, y - 5f)
-                path.lineTo(x + 26f, y + 1f)
-                path.lineTo(x + 13f, y + 6f)
-                path.close()
-                fill.shader = null
-                fill.color = Ui.TEXT
-                c.drawPath(path, fill)
-                fillOval(c, x + 4f, y - 9f, x + 10f, y - 3f, Ui.INK)
-            }
-            GameId.TTT -> {
-                line.color = col
-                line.strokeWidth = 5f
-                c.drawLine(x - 26f, y - 13f, x - 8f, y + 5f, line)
-                c.drawLine(x - 8f, y - 13f, x - 26f, y + 5f, line)
-                line.color = Ui.TEXT
-                c.drawCircle(x + 13f, y + 0f, 11f, line)
-            }
-            GameId.CHESS -> PieceArt.draw(c, KNIGHT, true, x, y - 1f, 62f)
+            GameId.FLAPPY -> FlappyIcon.draw(c, x, y, col)
+            GameId.TTT -> TttIcon.draw(c, x, y, col)
+            GameId.CHESS -> ChessIcon.draw(c, x, y, col)
             GameId.C4 -> C4Icon.draw(c, x, y, col)
             GameId.BACKGAMMON -> BackgammonIcon.draw(c, x, y, col)
             GameId.G2048 -> G2048Icon.draw(c, x, y, col)
             GameId.SUDOKU -> SudokuIcon.draw(c, x, y, col)
             GameId.MINES -> MinesIcon.draw(c, x, y, col)
             GameId.BATTLESHIP -> BattleshipIcon.draw(c, x, y, col)
-            else -> {
-                disc(c, x - 10f, y + 8f, Ui.TEXT)
-                disc(c, x + 10f, y - 8f, col)
-            }
+            else -> CheckersIcon.draw(c, x, y, col)
         }
-    }
-
-    private fun disc(c: Canvas, x: Float, y: Float, color: Int) {
-        fillOval(c, x - 16f, y - 16f, x + 16f, y + 16f, color)
-        strokeOval(c, x - 10f, y - 10f, x + 10f, y + 10f, withA(Ui.INK, 0.35f), 2f)
     }
 }

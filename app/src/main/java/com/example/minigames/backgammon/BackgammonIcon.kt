@@ -2,42 +2,21 @@ package com.example.minigames.backgammon
 
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.RectF
-import com.example.minigames.core.Ui
-import com.example.minigames.core.withA
+import com.example.minigames.core.Clay
 
-/** Hub icon: a die and a checker (flat, text-free, fits in about 64x64). */
+/** Hub icon: a white die and a wooden checker on a dark tile (about 64x64). */
 object BackgammonIcon {
-    /** Accent colour of the game (warm brown-orange). */
+    /** Accent colour of the game (warm wood). */
     val ACCENT: Int = Color.rgb(222, 138, 62)
 
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 2.5f
-    }
-    private val rf = RectF()
-
     fun draw(c: Canvas, cx: Float, cy: Float, accent: Int) {
-        // die (tilted)
-        c.save()
-        c.translate(cx - 7f, cy - 6f)
-        c.rotate(-12f)
-        rf.set(-17f, -17f, 17f, 17f)
-        fill.color = accent
-        c.drawRoundRect(rf, 7f, 7f, fill)
-        fill.color = Ui.INK
-        val pr = 3.1f
-        for (p in arrayOf(floatArrayOf(-8f, -8f), floatArrayOf(8f, -8f), floatArrayOf(0f, 0f),
-            floatArrayOf(-8f, 8f), floatArrayOf(8f, 8f))) {
-            c.drawCircle(p[0], p[1], pr, fill)
-        }
-        c.restore()
-        // checker
-        fill.color = Ui.TEXT
-        c.drawCircle(cx + 14f, cy + 14f, 13f, fill)
-        stroke.color = withA(Ui.INK, 0.35f)
-        c.drawCircle(cx + 14f, cy + 14f, 8f, stroke)
+        Clay.tile(c, cx, cy, accent)
+        Clay.ball(c, cx + 9f, cy + 11f, 15f, Color.rgb(226, 140, 66))
+        Clay.ring(c, cx + 8f, cy + 10f, 8f, 3.6f, Color.rgb(246, 176, 98))
+        Clay.block(c, cx - 23f, cy - 24f, cx + 5f, cy + 4f, 7f, Color.rgb(250, 246, 238))
+        val pip = Color.rgb(40, 40, 60)
+        Clay.dot(c, cx - 16.5f, cy - 17.5f, 2.7f, pip)
+        Clay.dot(c, cx - 9f, cy - 10f, 2.7f, pip)
+        Clay.dot(c, cx - 1.5f, cy - 2.5f, 2.7f, pip)
     }
 }
