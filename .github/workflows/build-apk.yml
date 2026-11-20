@@ -1,14 +1,17 @@
 name: Build APK
 
+# Запускается при каждом push в main/master, при pull request и вручную (вкладка Actions → Build APK → Run workflow).
 on:
   push:
     branches: [ main, master ]
   pull_request:
-  workflow_dispatch:        # ручной запуск: вкладка Actions -> Build APK -> Run workflow
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,11 +22,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # Android SDK уже есть на ubuntu-latest; setup-android принимает лицензии и ставит платформу
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Set up Gradle
+      - name: Set up Gradle (cache)
         uses: gradle/actions/setup-gradle@v4
 
       - name: Make gradlew executable
@@ -38,3 +37,4 @@ jobs:
           name: MiniGames-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 30
